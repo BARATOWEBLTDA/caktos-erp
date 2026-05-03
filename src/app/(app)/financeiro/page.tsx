@@ -20,7 +20,7 @@ export default function FinanceiroPage() {
   const [payables, setPayables] = useState<(AccountsPayable & { supplier?: Supplier })[]>([])
   const [receivables, setReceivables] = useState<(AccountsReceivable & { platform?: Platform })[]>([])
   const [platforms, setPlatforms] = useState<Platform[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [suppliers, setSuppliers] = useState<Pick<Supplier, 'id' | 'name'>[]>([])
 
   // Modal estados
   const [showTxForm, setShowTxForm] = useState(false)
