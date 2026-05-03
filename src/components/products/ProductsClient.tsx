@@ -160,7 +160,7 @@ export default function ProductsClient({
               )}
                 style={{
                   background: cat.image_url ? undefined : `${cat.color}20`,
-                  ringColor: cat.color,
+                  outlineColor: cat.color,
                 }}
               >
                 {cat.image_url ? (
