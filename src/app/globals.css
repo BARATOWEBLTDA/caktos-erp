@@ -1,0 +1,319 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   CSS VARIABLES - Design Tokens
+   ============================================================ */
+
+:root {
+  --font-display: 'Sora', sans-serif;
+  --font-sans: 'DM Sans', sans-serif;
+
+  /* Brand */
+  --color-brand: 196 77 240;
+  --color-rose: 244 63 94;
+
+  /* Light mode */
+  --bg-primary: 255 255 255;
+  --bg-secondary: 248 247 250;
+  --bg-tertiary: 240 238 245;
+  --bg-card: 255 255 255;
+  --bg-sidebar: 255 255 255;
+
+  --border: 228 224 237;
+  --border-strong: 200 195 215;
+
+  --text-primary: 15 12 24;
+  --text-secondary: 80 70 100;
+  --text-muted: 140 130 160;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-modal: 0 24px 64px rgba(0,0,0,0.18);
+}
+
+.dark {
+  --bg-primary: 11 9 16;
+  --bg-secondary: 18 14 25;
+  --bg-tertiary: 28 24 37;
+  --bg-card: 22 18 31;
+  --bg-sidebar: 14 11 22;
+
+  --border: 40 34 55;
+  --border-strong: 60 52 80;
+
+  --text-primary: 240 235 255;
+  --text-secondary: 180 165 210;
+  --text-muted: 120 105 150;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+  --shadow-modal: 0 24px 64px rgba(0,0,0,0.5);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  font-family: var(--font-sans);
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: rgb(var(--bg-secondary));
+  color: rgb(var(--text-primary));
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--border-strong));
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--text-muted));
+}
+
+/* ============================================================
+   COMPONENTES UTILITÁRIOS
+   ============================================================ */
+
+@layer components {
+  /* Card base */
+  .card {
+    @apply rounded-2xl border bg-white dark:bg-surface-900;
+    border-color: rgb(var(--border));
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Input base */
+  .input-base {
+    @apply w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all;
+    background-color: rgb(var(--bg-tertiary));
+    border-color: rgb(var(--border));
+    color: rgb(var(--text-primary));
+  }
+
+  .input-base:focus {
+    border-color: rgb(var(--color-brand));
+    box-shadow: 0 0 0 3px rgba(196, 77, 240, 0.12);
+  }
+
+  .input-base::placeholder {
+    color: rgb(var(--text-muted));
+  }
+
+  /* Label */
+  .label {
+    @apply block text-sm font-medium mb-1.5;
+    color: rgb(var(--text-secondary));
+  }
+
+  /* Btn primary */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all active:scale-95;
+    background: linear-gradient(135deg, #c44df0 0%, #e11d48 100%);
+    box-shadow: 0 4px 14px rgba(196, 77, 240, 0.3);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 6px 20px rgba(196, 77, 240, 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* Btn secondary */
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition-all active:scale-95;
+    background-color: rgb(var(--bg-tertiary));
+    border: 1px solid rgb(var(--border));
+    color: rgb(var(--text-primary));
+  }
+
+  .btn-secondary:hover {
+    background-color: rgb(var(--border));
+  }
+
+  /* Btn ghost */
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all active:scale-95;
+    color: rgb(var(--text-secondary));
+  }
+
+  .btn-ghost:hover {
+    background-color: rgb(var(--bg-tertiary));
+    color: rgb(var(--text-primary));
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* Stat card */
+  .stat-card {
+    @apply card p-5 flex flex-col gap-1;
+  }
+
+  /* Section title */
+  .section-title {
+    @apply text-lg font-semibold;
+    color: rgb(var(--text-primary));
+    font-family: var(--font-display);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #c44df0 0%, #f43f5e 100%);
+  }
+
+  /* Shimmer loading */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--bg-tertiary)) 25%,
+      rgb(var(--border)) 50%,
+      rgb(var(--bg-tertiary)) 75%
+    );
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Sidebar item */
+  .sidebar-item {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer;
+    color: rgb(var(--text-secondary));
+  }
+
+  .sidebar-item:hover {
+    background-color: rgb(var(--bg-tertiary));
+    color: rgb(var(--text-primary));
+  }
+
+  .sidebar-item.active {
+    color: rgb(var(--color-brand));
+    background-color: rgba(196, 77, 240, 0.08);
+  }
+
+  /* Product card Netflix style */
+  .product-card {
+    @apply relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300;
+    aspect-ratio: 1;
+    box-shadow: var(--shadow-card);
+  }
+
+  .product-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+  }
+
+  .product-card:hover .product-card-overlay {
+    opacity: 1;
+  }
+
+  .product-card-overlay {
+    @apply absolute inset-0 flex flex-col justify-end p-3 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
+  }
+
+  /* Notification dot */
+  .notif-dot {
+    @apply absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500;
+  }
+
+  /* Table */
+  .table-container {
+    @apply w-full overflow-x-auto;
+  }
+
+  .table-base {
+    @apply w-full text-sm;
+  }
+
+  .table-base thead tr {
+    border-bottom: 1px solid rgb(var(--border));
+  }
+
+  .table-base th {
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider;
+    color: rgb(var(--text-muted));
+  }
+
+  .table-base tbody tr {
+    border-bottom: 1px solid rgb(var(--border));
+    transition: background-color 0.15s ease;
+  }
+
+  .table-base tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .table-base tbody tr:hover {
+    background-color: rgb(var(--bg-tertiary));
+  }
+
+  .table-base td {
+    @apply px-4 py-3;
+    color: rgb(var(--text-primary));
+  }
+}
+
+/* ============================================================
+   TIPOGRAFIA
+   ============================================================ */
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+/* ============================================================
+   ANIMAÇÕES PERSONALIZADAS
+   ============================================================ */
+
+@keyframes shimmer {
+  from { background-position: -200px 0; }
+  to { background-position: calc(200px + 100%) 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ============================================================
+   DARK MODE TRANSITIONS
+   ============================================================ */
+
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
+}
+
+/* Exceções para não afetar animações */
+.no-transition * {
+  transition: none !important;
+}
