@@ -20,7 +20,7 @@ export default function VendasPage() {
   const supabase = createClient()
   const [sales, setSales] = useState<(Sale & { platform?: Platform })[]>([])
   const [platforms, setPlatforms] = useState<Platform[]>([])
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<Pick<Product, 'id' | 'name' | 'sale_price' | 'purchase_price' | 'image_url'>[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -76,7 +76,7 @@ export default function VendasPage() {
     setShippingCost('0')
   }
 
-  function addProduct(product: Product) {
+  function addProduct(product: Pick<Product, 'id' | 'name' | 'sale_price' | 'purchase_price' | 'image_url'>) {
     const existing = items.find(i => i.product_id === product.id)
     if (existing) {
       setItems(items.map(i => i.product_id === product.id
