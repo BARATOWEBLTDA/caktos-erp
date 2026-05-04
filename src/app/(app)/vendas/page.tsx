@@ -501,6 +501,7 @@ export default function VendasPage() {
                   </h3>
                   {[
                     { label: 'Subtotal', value: subtotal, color: 'rgb(var(--text-primary))' },
+                    { label: 'Custo (CMV)', value: -totalCost, color: '#ef4444' },
                     { label: `Comissão ${selectedPlatform.name} (${selectedPlatform.base_commission}%)`, value: -commission, color: '#f97316' },
                     selectedPlatform.fixed_fee > 0 && { label: 'Taxa fixa', value: -fixedFee, color: '#f97316' },
                     optionalFeesAmount > 0 && { label: 'Taxas opcionais', value: -optionalFeesAmount, color: '#f97316' },
