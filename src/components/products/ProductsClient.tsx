@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { Plus, Search, Package, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import type { Product, Category, Platform } from '@/types'
 import ProductCard from './ProductCard'
 import ProductModal from './ProductModal'
@@ -24,6 +24,7 @@ export default function ProductsClient({
   storeId,
   taxRate,
 }: ProductsClientProps) {
+  const supabase = createClient()
   const [products, setProducts] = useState(initialProducts)
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -47,10 +48,37 @@ export default function ProductsClient({
     })
   }, [products, search, selectedCategory, selectedPlatform, lowStockOnly])
 
-  const router = useRouter()
+  async function refreshProducts() {
+    // Busca produtos atualizados direto do banco incluindo plataformas
+    const { data: updatedProducts } = await supabase
+      .from('products')
+      .select(`
+        *,
+        category:categories(id, name, color, image_url),
+        supplier:suppliers(id, name),
+        platforms:product_platforms(
+          id, is_active, custom_commission, active_optional_fees, sale_price,
+          platform:platforms(id, name, color, base_commission, fixed_fee, has_optional_fees, optional_fees, fixed_fee)
+        )
+      `)
+      .eq('store_id', storeId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
 
-  function refreshProducts() {
-    router.refresh()
+    const { data: stockData } = await supabase
+      .from('current_stock')
+      .select('product_id, stock_quantity, low_stock')
+      .eq('store_id', storeId)
+
+    const stockMap = new Map(stockData?.map(s => [s.product_id, s]) ?? [])
+
+    const productsWithStock = updatedProducts?.map(p => ({
+      ...p,
+      stock_quantity: stockMap.get(p.id)?.stock_quantity ?? 0,
+      low_stock: stockMap.get(p.id)?.low_stock ?? false,
+    })) ?? []
+
+    setProducts(productsWithStock as typeof initialProducts)
   }
 
   return (
