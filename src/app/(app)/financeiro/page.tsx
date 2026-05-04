@@ -130,8 +130,27 @@ export default function FinanceiroPage() {
   }
 
   async function markPayablePaid(id: string) {
-    await supabase.from('accounts_payable').update({ status: 'pago', paid_at: new Date().toISOString() }).eq('id', id)
-    toast.success('Marcado como pago!')
+    const payable = payables.find(p => p.id === id)
+    if (!payable) return
+
+    await supabase.from('accounts_payable').update({
+      status: 'pago',
+      paid_at: new Date().toISOString()
+    }).eq('id', id)
+
+    // Criar movimentação financeira de saída automaticamente
+    await supabase.from('financial_transactions').insert({
+      store_id: storeId,
+      type: 'saida',
+      amount: payable.amount,
+      description: `Pagamento: ${payable.description}`,
+      transaction_date: new Date().toISOString(),
+      reference_id: id,
+      reference_type: 'accounts_payable',
+      is_confirmed: true,
+    })
+
+    toast.success('Conta marcada como paga e movimentação registrada!')
     load()
   }
 
@@ -285,7 +304,7 @@ export default function FinanceiroPage() {
                           <div className="flex items-center gap-1.5">
                             {isOverdue && <AlertTriangle size={13} style={{ color: '#ef4444' }} />}
                             <span className="text-xs" style={{ color: isOverdue ? '#ef4444' : 'rgb(var(--text-primary))' }}>
-                              {formatDate(p.due_date)}
+                              {p.due_date.split('T')[0].split('-').reverse().join('/')}
                             </span>
                           </div>
                         </td>
@@ -302,7 +321,7 @@ export default function FinanceiroPage() {
                             <button onClick={() => markPayablePaid(p.id)}
                               className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors"
                               style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-                              <Check size={12} /> Pago
+                              <Check size={12} /> Marcar como pago
                             </button>
                           )}
                         </td>
@@ -335,7 +354,7 @@ export default function FinanceiroPage() {
                     const plat = r.platform as { name: string; color: string } | null
                     return (
                       <tr key={r.id}>
-                        <td><span className="text-xs">{formatDate(r.due_date)}</span></td>
+                        <td><span className="text-xs">{r.due_date.split('T')[0].split('-').reverse().join('/')}</span></td>
                         <td><p className="text-sm" style={{ color: 'rgb(var(--text-primary))' }}>{r.description}</p></td>
                         <td>
                           {plat && (
