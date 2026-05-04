@@ -117,37 +117,21 @@ export default function ProductFormModal({
         productId = data.id
       }
 
-      // Salvar plataformas vinculadas — upsert garante que sempre salva
+      // Salvar plataformas — upsert evita erro de chave duplicada
       for (const [platformId, config] of Object.entries(selectedPlatforms)) {
-        const existing = product?.platforms?.find((pp: { platform_id: string; id: string }) => pp.platform_id === platformId)
-
-        const ppData = {
-          product_id: productId,
-          platform_id: platformId,
-          is_active: config.active,
-          custom_commission: config.custom_commission ? parseFloat(config.custom_commission) : null,
-          sale_price: config.sale_price ? parseFloat(config.sale_price) : null,
-          active_optional_fees: [],
-        }
-
-        if (existing) {
-          // Sempre atualiza se já existe
-          const { error } = await supabase
-            .from('product_platforms')
-            .update({
-              is_active: config.active,
-              custom_commission: config.custom_commission ? parseFloat(config.custom_commission) : null,
-              sale_price: config.sale_price ? parseFloat(config.sale_price) : null,
-            })
-            .eq('id', (existing as { id: string }).id)
-          if (error) throw error
-        } else {
-          // Insere independente de estar ativo ou não
-          const { error } = await supabase
-            .from('product_platforms')
-            .insert(ppData)
-          if (error) throw error
-        }
+        const { error } = await supabase
+          .from('product_platforms')
+          .upsert({
+            product_id: productId,
+            platform_id: platformId,
+            is_active: config.active,
+            custom_commission: config.custom_commission ? parseFloat(config.custom_commission) : null,
+            sale_price: config.sale_price ? parseFloat(config.sale_price) : null,
+            active_optional_fees: [],
+          }, {
+            onConflict: 'product_id,platform_id',
+          })
+        if (error) throw error
       }
 
       toast.success(product ? 'Produto atualizado!' : 'Produto cadastrado!')
