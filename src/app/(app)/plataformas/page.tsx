@@ -112,20 +112,18 @@ export default function PlataformasPage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   {/* Logo da plataforma */}
-                  <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
-                    style={{ background: p.slug === 'tiktok' ? '#000' : p.slug === 'mercadolivre' ? '#FFE600' : p.slug === 'shopee' ? '#F97316' : `${p.color}20` }}>
-                    {p.slug === 'shopee' && (
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Shopee.svg/1200px-Shopee.svg.png" alt="Shopee" className="w-7 h-7 object-contain" />
-                    )}
-                    {p.slug === 'tiktok' && (
-                      <img src="https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/TikTok_logo.svg/1200px-TikTok_logo.svg.png" alt="TikTok" className="w-7 h-7 object-contain" />
-                    )}
-                    {p.slug === 'mercadolivre' && (
-                      <img src="https://upload.wikimedia.org/wikipedia/pt/thumb/7/7b/MercadoLivre_Logotipo.svg/1200px-MercadoLivre_Logotipo.svg.png" alt="Mercado Livre" className="w-8 h-8 object-contain" />
-                    )}
-                    {!['shopee','tiktok','mercadolivre'].includes(p.slug) && (
-                      <div className="w-4 h-4 rounded-full" style={{ background: p.color }} />
-                    )}
+                  <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center font-bold text-sm"
+                    style={{
+                      background: p.slug === 'shopee' ? '#F97316' : p.slug === 'mercadolivre' ? '#FFE600' : p.slug === 'tiktok' ? '#010101' : p.color,
+                      color: p.slug === 'mercadolivre' ? '#333' : 'white',
+                      fontFamily: 'Sora, sans-serif',
+                      fontSize: '10px',
+                      letterSpacing: '0.05em',
+                    }}>
+                    {p.slug === 'shopee' && '🛍️'}
+                    {p.slug === 'tiktok' && '🎵'}
+                    {p.slug === 'mercadolivre' && '🛒'}
+                    {!['shopee','tiktok','mercadolivre'].includes(p.slug) && p.name.substring(0, 2).toUpperCase()}
                   </div>
                   <div>
                     <h3 className="text-base font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>
