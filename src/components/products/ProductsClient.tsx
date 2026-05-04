@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
-import { Plus, Search, Filter, Package, AlertTriangle } from 'lucide-react'
-import { cn, formatCurrency, calculatePlatformProfit } from '@/lib/utils'
+import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { Plus, Search, Package, AlertTriangle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { Product, Category, Platform } from '@/types'
 import ProductCard from './ProductCard'
 import ProductModal from './ProductModal'
@@ -46,9 +47,10 @@ export default function ProductsClient({
     })
   }, [products, search, selectedCategory, selectedPlatform, lowStockOnly])
 
+  const router = useRouter()
+
   function refreshProducts() {
-    // Em produção, revalidar via router.refresh() ou re-fetch
-    window.location.reload()
+    router.refresh()
   }
 
   return (
