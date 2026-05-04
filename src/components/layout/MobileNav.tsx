@@ -6,7 +6,7 @@ import { LayoutDashboard, Package, ShoppingCart, BarChart3, MoreHorizontal } fro
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Tag, Truck, Store, RefreshCcw, Wallet, FolderOpen } from 'lucide-react'
+import { Tag, Truck, Store, RefreshCcw, Wallet, FolderOpen, Boxes } from 'lucide-react'
 
 const mainItems = [
   { href: '/dashboard', label: 'Início', icon: LayoutDashboard },
@@ -19,6 +19,7 @@ const moreItems = [
   { href: '/categorias', label: 'Categorias', icon: Tag },
   { href: '/fornecedores', label: 'Fornecedores', icon: Truck },
   { href: '/plataformas', label: 'Plataformas', icon: Store },
+  { href: '/estoque', label: 'Estoque', icon: Boxes },
   { href: '/reembolsos', label: 'Reembolsos', icon: RefreshCcw },
   { href: '/caixa', label: 'Caixa', icon: Wallet },
   { href: '/documentos', label: 'Drive', icon: FolderOpen },

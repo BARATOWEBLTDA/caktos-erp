@@ -16,6 +16,7 @@ import {
   Tag,
   ChevronRight,
   Sparkles,
+  Boxes,
 } from 'lucide-react'
 
 const navItems = [
@@ -29,6 +30,7 @@ const navItems = [
     group: 'Catálogo',
     items: [
       { href: '/produtos', label: 'Produtos', icon: Package },
+      { href: '/estoque', label: 'Estoque', icon: Boxes },
       { href: '/categorias', label: 'Categorias', icon: Tag },
       { href: '/fornecedores', label: 'Fornecedores', icon: Truck },
       { href: '/plataformas', label: 'Plataformas', icon: Store },

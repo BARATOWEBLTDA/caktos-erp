@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 const routeLabels: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/produtos': 'Produtos',
+  '/estoque': 'Estoque',
   '/categorias': 'Categorias',
   '/fornecedores': 'Fornecedores',
   '/plataformas': 'Plataformas',
