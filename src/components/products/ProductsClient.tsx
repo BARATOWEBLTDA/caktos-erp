@@ -49,7 +49,6 @@ export default function ProductsClient({
   }, [products, search, selectedCategory, selectedPlatform, lowStockOnly])
 
   async function refreshProducts() {
-    // Busca produtos atualizados direto do banco incluindo plataformas
     const { data: updatedProducts } = await supabase
       .from('products')
       .select(`
@@ -57,8 +56,8 @@ export default function ProductsClient({
         category:categories(id, name, color, image_url),
         supplier:suppliers(id, name),
         platforms:product_platforms(
-          id, is_active, custom_commission, active_optional_fees, sale_price,
-          platform:platforms(id, name, color, base_commission, fixed_fee, has_optional_fees, optional_fees, fixed_fee)
+          id, platform_id, is_active, custom_commission, active_optional_fees, sale_price,
+          platform:platforms(id, name, slug, color, base_commission, fixed_fee, has_optional_fees, optional_fees)
         )
       `)
       .eq('store_id', storeId)

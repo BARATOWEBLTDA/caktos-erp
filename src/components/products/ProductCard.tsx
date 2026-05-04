@@ -18,34 +18,33 @@ const PLATFORM_LOGOS: Record<string, string> = {
 }
 
 export default function ProductCard({ product, platforms, taxRate, onClick }: ProductCardProps) {
-  // Calcular lucro por plataforma ativa no produto
-  const activePlatforms = platforms.filter(p => {
-    const pp = product.platforms?.find(pp => pp.platform_id === p.id)
-    return pp?.is_active
-  })
-
-  const profits = activePlatforms.map(platform => {
-    const productPlatform = product.platforms?.find(pp => pp.platform_id === platform.id)
-    return {
-      platform,
-      profit: calculatePlatformProfit(
-        productPlatform?.sale_price ?? product.sale_price,
-        product.purchase_price,
+  // Mostrar APENAS plataformas ativas com preço configurado
+  const displayProfits = platforms
+    .map(platform => {
+      const productPlatform = product.platforms?.find(pp => pp.platform_id === platform.id)
+      if (!productPlatform?.is_active) return null
+      const salePrice = productPlatform?.sale_price ?? null
+      if (!salePrice) return null
+      return {
         platform,
+        salePrice,
         productPlatform,
-        0,
-        taxRate
-      )
-    }
-  })
-
-  // Se não houver plataformas vinculadas, mostra a primeira disponível
-  const displayProfits = profits.length > 0
-    ? profits
-    : platforms.slice(0, 3).map(platform => ({
-        platform,
-        profit: calculatePlatformProfit(product.sale_price, product.purchase_price, platform, undefined, 0, taxRate)
-      }))
+        profit: calculatePlatformProfit(
+          salePrice,
+          product.purchase_price,
+          platform,
+          productPlatform,
+          0,
+          taxRate
+        )
+      }
+    })
+    .filter(Boolean) as Array<{
+      platform: typeof platforms[0]
+      salePrice: number
+      productPlatform: NonNullable<typeof product.platforms>[0]
+      profit: ReturnType<typeof calculatePlatformProfit>
+    }>
 
   return (
     <div
@@ -102,10 +101,12 @@ export default function ProductCard({ product, platforms, taxRate, onClick }: Pr
 
         {/* Lucro por plataforma */}
         <div className="space-y-1.5">
-          {displayProfits.map(({ platform, profit }) => {
-            const productPlatform = product.platforms?.find(pp => pp.platform_id === platform.id)
-            const salePrice = productPlatform?.sale_price ?? product.sale_price
-            return (
+          {displayProfits.length === 0 && (
+            <p className="text-[10px]" style={{ color: 'rgb(var(--text-muted))' }}>
+              Nenhuma plataforma vinculada
+            </p>
+          )}
+          {displayProfits.map(({ platform, salePrice, profit }) => (
             <div key={platform.id} className="flex items-center gap-2">
               {/* Logo da plataforma */}
               <div className="w-5 h-5 rounded-md overflow-hidden shrink-0 flex items-center justify-center"
@@ -139,8 +140,7 @@ export default function ProductCard({ product, platforms, taxRate, onClick }: Pr
                 </span>
               </div>
             </div>
-            )
-          })}
+          ))}
         </div>
       </div>
     </div>
