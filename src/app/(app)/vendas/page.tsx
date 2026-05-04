@@ -440,7 +440,6 @@ export default function VendasPage() {
                     background: 'linear-gradient(135deg, rgba(196,77,240,0.1), rgba(244,63,94,0.1))',
                     border: '1px dashed rgba(196,77,240,0.4)',
                     color: analyzingImage ? 'rgb(var(--text-muted))' : '#c44df0',
-                    ringColor: '#c44df0',
                   }}>
                   {analyzingImage ? (
                     <><Loader2 size={16} className="animate-spin" />Analisando imagem com IA...</>
