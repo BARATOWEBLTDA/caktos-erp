@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, ShoppingCart, Search, ChevronDown, Loader2, Trash2, X } from 'lucide-react'
+import { Plus, ShoppingCart, Search, Loader2, Trash2, X, Sparkles, Upload, AlertCircle } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Platform, Product, Sale } from '@/types'
 import toast from 'react-hot-toast'
@@ -21,11 +21,18 @@ export default function VendasPage() {
   const [sales, setSales] = useState<(Sale & { platform?: Platform })[]>([])
   const [platforms, setPlatforms] = useState<Platform[]>([])
   const [products, setProducts] = useState<Pick<Product, 'id' | 'name' | 'sale_price' | 'purchase_price' | 'image_url'>[]>([])
+  const [productsWithVariations, setProductsWithVariations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [storeId, setStoreId] = useState<string>('')
   const [taxRate, setTaxRate] = useState(4)
+
+  // AI image reading
+  const [analyzingImage, setAnalyzingImage] = useState(false)
+  const [aiPreview, setAiPreview] = useState<string | null>(null)
+  const [unmatchedItems, setUnmatchedItems] = useState<Array<{ name: string; variation: string | null; sku: string | null }>>([])
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   // Form state
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null)
@@ -35,9 +42,9 @@ export default function VendasPage() {
   const [items, setItems] = useState<SaleItemForm[]>([])
   const [productSearch, setProductSearch] = useState('')
   const [showProductSearch, setShowProductSearch] = useState(false)
-  // Taxas opcionais da plataforma selecionada
   const [activeOptionalFees, setActiveOptionalFees] = useState<Record<string, boolean>>({})
   const [notes, setNotes] = useState('')
+  const [discount, setDiscount] = useState('0')
 
   useEffect(() => {
     async function load() {
@@ -53,19 +60,105 @@ export default function VendasPage() {
       setStoreId(sid)
       setTaxRate(tr)
 
-      const [{ data: salesData }, { data: platformsData }, { data: productsData }] = await Promise.all([
+      const [{ data: salesData }, { data: platformsData }, { data: productsData }, { data: productsWithVars }] = await Promise.all([
         supabase.from('sales').select('*, platform:platforms(*)').eq('store_id', sid).order('sale_date', { ascending: false }).limit(50),
         supabase.from('platforms').select('*').eq('store_id', sid).eq('is_active', true),
         supabase.from('products').select('id, name, sale_price, purchase_price, image_url').eq('store_id', sid).eq('is_active', true),
+        supabase.from('products').select(`
+          id, name, sku, purchase_price,
+          platforms:product_platforms(platform_id, sale_price, is_active),
+          variations:product_variations(id, name, sku)
+        `).eq('store_id', sid).eq('is_active', true),
       ])
 
       setSales(salesData ?? [])
       setPlatforms(platformsData ?? [])
       setProducts(productsData ?? [])
+      setProductsWithVariations(productsWithVars ?? [])
       setLoading(false)
     }
     load()
   }, [])
+
+  async function analyzeImage(file: File) {
+    setAnalyzingImage(true)
+    setUnmatchedItems([])
+    try {
+      // Converter para base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+
+      setAiPreview(base64)
+
+      const response = await fetch('/api/parse-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: base64,
+          products: productsWithVariations,
+        }),
+      })
+
+      const result = await response.json()
+      if (!result.success) throw new Error(result.error)
+
+      const data = result.data
+
+      // Identificar plataforma
+      const platform = platforms.find(p => p.slug === data.platform)
+      if (platform) handleSelectPlatform(platform)
+
+      // Preencher código do pedido
+      if (data.order_code) setOrderCode(data.order_code)
+
+      // Preencher desconto
+      if (data.discount > 0) setDiscount(data.discount.toString())
+
+      // Preencher itens
+      const newItems: SaleItemForm[] = []
+      const unmatched: Array<{ name: string; variation: string | null; sku: string | null }> = []
+
+      for (const item of data.items) {
+        if (item.matched && item.product_id) {
+          const product = productsData?.find(p => p.id === item.product_id)
+          if (product) {
+            newItems.push({
+              product_id: product.id,
+              product_name: product.name + (item.variation_name_found ? ` — ${item.variation_name_found}` : ''),
+              quantity: item.quantity,
+              unit_price: item.unit_price || product.sale_price,
+              purchase_price: product.purchase_price,
+            })
+          }
+        } else {
+          unmatched.push({
+            name: item.product_name_found,
+            variation: item.variation_name_found,
+            sku: item.sku_found,
+          })
+        }
+      }
+
+      if (newItems.length > 0) setItems(newItems)
+      if (unmatched.length > 0) setUnmatchedItems(unmatched)
+
+      if (newItems.length > 0) {
+        toast.success(`${newItems.length} produto(s) identificado(s) automaticamente!`)
+      }
+      if (unmatched.length > 0) {
+        toast.error(`${unmatched.length} produto(s) não encontrado(s) no cadastro.`)
+      }
+
+    } catch (err: unknown) {
+      toast.error('Erro ao analisar imagem: ' + (err as Error).message)
+    } finally {
+      setAnalyzingImage(false)
+    }
+  }
 
   function handleSelectPlatform(platform: Platform) {
     setSelectedPlatform(platform)
@@ -98,19 +191,21 @@ export default function VendasPage() {
 
   // Cálculos
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0)
+  const discountAmount = parseFloat(discount) || 0
+  const subtotalAfterDiscount = Math.max(subtotal - discountAmount, 0)
   const commission = selectedPlatform
-    ? (subtotal * selectedPlatform.base_commission) / 100
+    ? (subtotalAfterDiscount * selectedPlatform.base_commission) / 100
     : 0
   const fixedFee = selectedPlatform?.fixed_fee ?? 0
   const optionalFeesAmount = selectedPlatform?.optional_fees?.reduce((s, f) => {
-    return activeOptionalFees[f.id] ? s + (subtotal * f.rate) / 100 : s
+    return activeOptionalFees[f.id] ? s + (subtotalAfterDiscount * f.rate) / 100 : s
   }, 0) ?? 0
   const shipping = parseFloat(shippingCost) || 0
-  const taxAmount = (subtotal * taxRate) / 100
+  const taxAmount = (subtotalAfterDiscount * taxRate) / 100
   const totalFees = commission + fixedFee + optionalFeesAmount + shipping + taxAmount
   const totalCost = items.reduce((s, i) => s + i.purchase_price * i.quantity, 0)
-  const netProfit = subtotal - totalCost - totalFees
-  const total = subtotal
+  const netProfit = subtotalAfterDiscount - totalCost - totalFees
+  const total = subtotalAfterDiscount
 
   async function handleSave() {
     if (!selectedPlatform || items.length === 0) {
@@ -132,7 +227,7 @@ export default function VendasPage() {
         sale_date: new Date(saleDate).toISOString(),
         subtotal,
         shipping_cost: shipping,
-        discount: 0,
+        discount: discountAmount,
         total,
         commission_rate: selectedPlatform.base_commission,
         fixed_fee: fixedFee,
@@ -192,6 +287,9 @@ export default function VendasPage() {
     setItems([])
     setActiveOptionalFees({})
     setNotes('')
+    setDiscount('0')
+    setAiPreview(null)
+    setUnmatchedItems([])
   }
 
   const filteredProducts = products.filter(p =>
@@ -309,6 +407,68 @@ export default function VendasPage() {
             </div>
 
             <div className="p-6 space-y-5">
+
+              {/* Botão IA — Analisar Print */}
+              <div>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) analyzeImage(file)
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={analyzingImage}
+                  className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3 text-sm font-semibold transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(196,77,240,0.1), rgba(244,63,94,0.1))',
+                    border: '1px dashed rgba(196,77,240,0.4)',
+                    color: '#c44df0',
+                  }}>
+                  {analyzingImage ? (
+                    <><Loader2 size={16} className="animate-spin" />Analisando imagem com IA...</>
+                  ) : (
+                    <><Sparkles size={16} /><Upload size={16} />Colar / Upload do print do pedido — IA preenche automaticamente</>
+                  )}
+                </button>
+
+                {/* Preview da imagem analisada */}
+                {aiPreview && !analyzingImage && (
+                  <div className="mt-2 flex items-center gap-2 rounded-xl p-2"
+                    style={{ background: 'rgb(var(--bg-tertiary))' }}>
+                    <img src={aiPreview} alt="print analisado" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium" style={{ color: '#10b981' }}>✅ Imagem analisada com sucesso</p>
+                      <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>Confira os dados abaixo e ajuste se necessário</p>
+                    </div>
+                    <button onClick={() => { setAiPreview(null); setUnmatchedItems([]) }}
+                      className="p-1 shrink-0" style={{ color: 'rgb(var(--text-muted))' }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Itens não encontrados */}
+                {unmatchedItems.length > 0 && (
+                  <div className="mt-2 rounded-xl p-3 space-y-1"
+                    style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)' }}>
+                    <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: '#eab308' }}>
+                      <AlertCircle size={13} /> Produtos não encontrados no cadastro — adicione manualmente:
+                    </p>
+                    {unmatchedItems.map((item, i) => (
+                      <p key={i} className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
+                        • {item.name}{item.variation ? ` — ${item.variation}` : ''}{item.sku ? ` (SKU: ${item.sku})` : ''}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Plataforma + Data + Código */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
@@ -492,6 +652,26 @@ export default function VendasPage() {
                 )}
               </div>
 
+              {/* Cupom / Desconto */}
+              {items.length > 0 && (
+                <div className="max-w-xs">
+                  <label className="label">Cupom / Desconto (R$)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm"
+                      style={{ color: 'rgb(var(--text-muted))' }}>-R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="input-base pl-10"
+                      value={discount}
+                      onChange={e => setDiscount(e.target.value)}
+                      placeholder="0,00"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Resumo */}
               {items.length > 0 && selectedPlatform && (
                 <div className="rounded-2xl p-4 space-y-2"
@@ -501,6 +681,7 @@ export default function VendasPage() {
                   </h3>
                   {[
                     { label: 'Subtotal', value: subtotal, color: 'rgb(var(--text-primary))' },
+                    discountAmount > 0 && { label: 'Cupom / Desconto', value: -discountAmount, color: '#8b5cf6' },
                     { label: 'Custo (CMV)', value: -totalCost, color: '#ef4444' },
                     { label: `Comissão ${selectedPlatform.name} (${selectedPlatform.base_commission}%)`, value: -commission, color: '#f97316' },
                     selectedPlatform.fixed_fee > 0 && { label: 'Taxa fixa', value: -fixedFee, color: '#f97316' },
