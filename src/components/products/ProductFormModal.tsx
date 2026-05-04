@@ -88,6 +88,10 @@ export default function ProductFormModal({
         imageUrl = urlData.publicUrl
       }
 
+      // Usar o preço da primeira plataforma ativa como sale_price do produto
+      const firstActivePlatformPrice = Object.values(selectedPlatforms)
+        .find(p => p.active && p.sale_price)?.sale_price
+
       const productData = {
         store_id: storeId,
         name: form.name,
@@ -95,7 +99,7 @@ export default function ProductFormModal({
         description: form.description || null,
         image_url: imageUrl,
         purchase_price: parseFloat(form.purchase_price) || 0,
-        sale_price: parseFloat(form.sale_price) || 0,
+        sale_price: parseFloat(firstActivePlatformPrice ?? form.sale_price) || 0,
         category_id: form.category_id || null,
         supplier_id: form.supplier_id || null,
         min_stock: parseInt(form.min_stock) || 5,
@@ -113,9 +117,9 @@ export default function ProductFormModal({
         productId = data.id
       }
 
-      // Salvar plataformas vinculadas
+      // Salvar plataformas vinculadas — upsert garante que sempre salva
       for (const [platformId, config] of Object.entries(selectedPlatforms)) {
-        const existing = product?.platforms?.find((pp: { platform_id: string }) => pp.platform_id === platformId)
+        const existing = product?.platforms?.find((pp: { platform_id: string; id: string }) => pp.platform_id === platformId)
 
         const ppData = {
           product_id: productId,
@@ -123,12 +127,26 @@ export default function ProductFormModal({
           is_active: config.active,
           custom_commission: config.custom_commission ? parseFloat(config.custom_commission) : null,
           sale_price: config.sale_price ? parseFloat(config.sale_price) : null,
+          active_optional_fees: [],
         }
 
         if (existing) {
-          await supabase.from('product_platforms').update(ppData).eq('id', (existing as { id: string }).id)
-        } else if (config.active) {
-          await supabase.from('product_platforms').insert(ppData)
+          // Sempre atualiza se já existe
+          const { error } = await supabase
+            .from('product_platforms')
+            .update({
+              is_active: config.active,
+              custom_commission: config.custom_commission ? parseFloat(config.custom_commission) : null,
+              sale_price: config.sale_price ? parseFloat(config.sale_price) : null,
+            })
+            .eq('id', (existing as { id: string }).id)
+          if (error) throw error
+        } else {
+          // Insere independente de estar ativo ou não
+          const { error } = await supabase
+            .from('product_platforms')
+            .insert(ppData)
+          if (error) throw error
         }
       }
 
@@ -228,7 +246,7 @@ export default function ProductFormModal({
             </div>
 
             {/* Preços */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">Preço de compra *</label>
                 <div className="relative">
@@ -246,22 +264,6 @@ export default function ProductFormModal({
                 </div>
               </div>
               <div>
-                <label className="label">Preço de venda *</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm"
-                    style={{ color: 'rgb(var(--text-muted))' }}>R$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="input-base pl-9"
-                    value={form.sale_price}
-                    onChange={e => setForm({ ...form, sale_price: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
                 <label className="label">Estoque mínimo</label>
                 <input
                   type="number"
@@ -272,6 +274,9 @@ export default function ProductFormModal({
                 />
               </div>
             </div>
+            <p className="text-xs rounded-xl px-3 py-2" style={{ background: 'rgba(196,77,240,0.08)', color: '#c44df0' }}>
+              💡 O preço de venda é definido individualmente por plataforma abaixo.
+            </p>
 
             {/* Categoria */}
             <div className="grid grid-cols-2 gap-4">
@@ -367,10 +372,10 @@ export default function ProductFormModal({
                           </div>
                         )}
 
-                        {/* Preço específico nesta plataforma */}
-                        <div>
-                          <label className="text-xs mb-1 block" style={{ color: 'rgb(var(--text-muted))' }}>
-                            Preço nesta plataforma (opcional)
+                        {/* Preço de venda nesta plataforma */}
+                        <div className={platform.has_category_commission ? '' : 'col-span-2'}>
+                          <label className="text-xs mb-1 block font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
+                            Preço de venda nesta plataforma *
                           </label>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs"
@@ -379,8 +384,9 @@ export default function ProductFormModal({
                               type="number"
                               step="0.01"
                               min="0"
+                              required
                               className="input-base pl-8 py-2 text-sm"
-                              placeholder={form.sale_price || 'Usa o preço padrão'}
+                              placeholder="0,00"
                               value={selectedPlatforms[platform.id]?.sale_price ?? ''}
                               onChange={e => setSelectedPlatforms(prev => ({
                                 ...prev,
