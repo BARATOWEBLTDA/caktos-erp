@@ -420,22 +420,42 @@ export default function VendasPage() {
                     if (file) analyzeImage(file)
                   }}
                 />
-                <button
-                  type="button"
-                  onClick={() => imageInputRef.current?.click()}
-                  disabled={analyzingImage}
-                  className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3 text-sm font-semibold transition-all"
+                <div
+                  tabIndex={0}
+                  onClick={() => !analyzingImage && imageInputRef.current?.click()}
+                  onPaste={e => {
+                    const item = e.clipboardData.items[0]
+                    if (item?.type.startsWith('image/')) {
+                      const file = item.getAsFile()
+                      if (file) analyzeImage(file)
+                    }
+                  }}
+                  onKeyDown={e => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                      // Deixa o onPaste tratar
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-4 text-sm font-semibold transition-all cursor-pointer outline-none focus:ring-2"
                   style={{
                     background: 'linear-gradient(135deg, rgba(196,77,240,0.1), rgba(244,63,94,0.1))',
                     border: '1px dashed rgba(196,77,240,0.4)',
-                    color: '#c44df0',
+                    color: analyzingImage ? 'rgb(var(--text-muted))' : '#c44df0',
+                    ringColor: '#c44df0',
                   }}>
                   {analyzingImage ? (
                     <><Loader2 size={16} className="animate-spin" />Analisando imagem com IA...</>
                   ) : (
-                    <><Sparkles size={16} /><Upload size={16} />Colar / Upload do print do pedido — IA preenche automaticamente</>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <Sparkles size={16} /><Upload size={16} />
+                        <span>Colar print com Ctrl+V ou clique para fazer upload</span>
+                      </div>
+                      <p className="text-xs font-normal" style={{ color: 'rgb(var(--text-muted))' }}>
+                        Tire print da tela do pedido → Ctrl+V aqui → IA preenche automaticamente
+                      </p>
+                    </div>
                   )}
-                </button>
+                </div>
 
                 {/* Preview da imagem analisada */}
                 {aiPreview && !analyzingImage && (
