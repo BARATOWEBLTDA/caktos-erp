@@ -158,9 +158,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-8 text-center text-xs" style={{ color: 'rgb(60 50 80)' }}>
-            © 2025 BARATO WEB LTDA.
-          </p>
+
         </div>
       </div>
     </div>
