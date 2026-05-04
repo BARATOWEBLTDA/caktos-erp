@@ -89,21 +89,23 @@ export default function ProductCard({ product, platforms, taxRate, onClick }: Pr
 
       {/* Informações abaixo da imagem */}
       <div className="p-3 flex flex-col gap-2">
-        {/* Nome + preço de venda */}
+        {/* Nome + preço de compra */}
         <div>
           <p className="text-sm font-semibold line-clamp-2 leading-snug"
             style={{ color: 'rgb(var(--text-primary))', fontFamily: 'Sora, sans-serif' }}>
             {product.name}
           </p>
           <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-muted))' }}>
-            Venda: <span className="font-semibold" style={{ color: '#c44df0' }}>{formatCurrency(product.sale_price)}</span>
-            <span className="ml-2">Custo: {formatCurrency(product.purchase_price)}</span>
+            Custo: <span className="font-medium">{formatCurrency(product.purchase_price)}</span>
           </p>
         </div>
 
         {/* Lucro por plataforma */}
         <div className="space-y-1.5">
-          {displayProfits.map(({ platform, profit }) => (
+          {displayProfits.map(({ platform, profit }) => {
+            const productPlatform = product.platforms?.find(pp => pp.platform_id === platform.id)
+            const salePrice = productPlatform?.sale_price ?? product.sale_price
+            return (
             <div key={platform.id} className="flex items-center gap-2">
               {/* Logo da plataforma */}
               <div className="w-5 h-5 rounded-md overflow-hidden shrink-0 flex items-center justify-center"
@@ -120,12 +122,15 @@ export default function ProductCard({ product, platforms, taxRate, onClick }: Pr
                 )}
               </div>
               {/* Valores */}
-              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <span className="text-xs font-bold"
-                  style={{ color: profit.net_profit >= 0 ? '#10b981' : '#ef4444' }}>
-                  {formatCurrency(profit.net_profit)}
+              <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
+                <span className="text-[10px]" style={{ color: 'rgb(var(--text-muted))' }}>
+                  Venda: <span className="font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>{formatCurrency(salePrice)}</span>
                 </span>
-                <span className="text-[10px] rounded-md px-1.5 py-0.5 font-medium"
+                <span className="text-[10px] font-bold"
+                  style={{ color: profit.net_profit >= 0 ? '#10b981' : '#ef4444' }}>
+                  Lucro: {formatCurrency(profit.net_profit)}
+                </span>
+                <span className="text-[10px] rounded-md px-1 py-0.5 font-medium"
                   style={{
                     background: profit.net_profit >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
                     color: profit.net_profit >= 0 ? '#10b981' : '#ef4444',
@@ -134,7 +139,8 @@ export default function ProductCard({ product, platforms, taxRate, onClick }: Pr
                 </span>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
