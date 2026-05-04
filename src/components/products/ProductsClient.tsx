@@ -124,57 +124,64 @@ export default function ProductsClient({
           </div>
         </div>
 
-        {/* Categorias - bolinhas */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        {/* Categorias - bolinhas estilo cardápio */}
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+          {/* Todas */}
           <button
             onClick={() => setSelectedCategory(null)}
-            className={cn(
-              'flex flex-col items-center gap-1.5 shrink-0 transition-all',
-              !selectedCategory ? 'opacity-100' : 'opacity-50 hover:opacity-80'
-            )}
+            className="flex flex-col items-center gap-2 shrink-0 transition-all"
           >
             <div className={cn(
-              'w-12 h-12 rounded-full flex items-center justify-center transition-all',
-              !selectedCategory ? 'ring-2 ring-brand-500 ring-offset-2' : ''
+              'w-16 h-16 rounded-full flex items-center justify-center transition-all',
+              !selectedCategory
+                ? 'ring-3 ring-offset-2'
+                : 'opacity-60 hover:opacity-90'
             )}
-              style={{ background: 'rgb(var(--bg-tertiary))' }}>
-              <Package size={20} style={{ color: 'rgb(var(--text-muted))' }} />
+              style={{
+                background: !selectedCategory ? 'linear-gradient(135deg, #c44df0, #f43f5e)' : 'rgb(var(--bg-tertiary))',
+                boxShadow: !selectedCategory ? '0 4px 14px rgba(196,77,240,0.4)' : 'none',
+                border: !selectedCategory ? '3px solid rgba(196,77,240,0.6)' : '3px solid rgb(var(--border))',
+              }}>
+              <Package size={24} style={{ color: !selectedCategory ? 'white' : 'rgb(var(--text-muted))' }} />
             </div>
-            <span className="text-[10px] font-medium" style={{ color: 'rgb(var(--text-secondary))' }}>
+            <span className="text-[11px] font-semibold whitespace-nowrap"
+              style={{ color: !selectedCategory ? '#c44df0' : 'rgb(var(--text-secondary))' }}>
               Todos
             </span>
           </button>
 
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id === selectedCategory ? null : cat.id)}
-              className={cn(
-                'flex flex-col items-center gap-1.5 shrink-0 transition-all',
-                selectedCategory === cat.id ? 'opacity-100' : 'opacity-50 hover:opacity-80'
-              )}
-            >
-              <div className={cn(
-                'w-12 h-12 rounded-full overflow-hidden flex items-center justify-center transition-all',
-                selectedCategory === cat.id ? 'ring-2 ring-offset-2' : ''
-              )}
-                style={{
-                  background: cat.image_url ? undefined : `${cat.color}20`,
-                  outlineColor: cat.color,
-                }}
+          {categories.map(cat => {
+            const isActive = selectedCategory === cat.id
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id === selectedCategory ? null : cat.id)}
+                className="flex flex-col items-center gap-2 shrink-0 transition-all"
               >
-                {cat.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-lg">💄</span>
-                )}
-              </div>
-              <span className="text-[10px] font-medium whitespace-nowrap" style={{ color: 'rgb(var(--text-secondary))' }}>
-                {cat.name}
-              </span>
-            </button>
-          ))}
+                <div
+                  className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center transition-all"
+                  style={{
+                    background: cat.image_url ? undefined : `${cat.color}15`,
+                    border: isActive ? `3px solid ${cat.color}` : '3px solid rgb(var(--border))',
+                    boxShadow: isActive ? `0 4px 14px ${cat.color}50` : 'none',
+                    opacity: !isActive && selectedCategory ? 0.55 : 1,
+                    padding: cat.image_url ? '0' : '0',
+                  }}
+                >
+                  {cat.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">💄</span>
+                  )}
+                </div>
+                <span className="text-[11px] font-semibold whitespace-nowrap"
+                  style={{ color: isActive ? cat.color : 'rgb(var(--text-secondary))' }}>
+                  {cat.name}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
