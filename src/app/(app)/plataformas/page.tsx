@@ -112,16 +112,16 @@ export default function PlataformasPage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   {/* Logo da plataforma */}
-                  <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
-                    style={{ background: 'rgb(var(--bg-tertiary))' }}>
+                  <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center p-1.5"
+                    style={{ background: 'white', border: '1px solid rgba(255,255,255,0.15)' }}>
                     {p.slug === 'shopee' && (
-                      <img src="https://cdn.awsli.com.br/2500x2500/2015/2015798/produto/354645871/shoppe--2--mvj1hgvttt.png" alt="Shopee" className="w-full h-full object-cover" />
+                      <img src="https://cdn.awsli.com.br/2500x2500/2015/2015798/produto/354645871/shoppe--2--mvj1hgvttt.png" alt="Shopee" className="w-full h-full object-contain" />
                     )}
                     {p.slug === 'mercadolivre' && (
-                      <img src="https://s2.glbimg.com/Bu6upvmSg6SRv0za635uXphThKo=/620x430/e.glbimg.com/og/ed/f/original/2020/03/28/mercado-livre.jpg" alt="Mercado Livre" className="w-full h-full object-cover" />
+                      <img src="https://s2.glbimg.com/Bu6upvmSg6SRv0za635uXphThKo=/620x430/e.glbimg.com/og/ed/f/original/2020/03/28/mercado-livre.jpg" alt="Mercado Livre" className="w-full h-full object-contain" />
                     )}
                     {p.slug === 'tiktok' && (
-                      <img src="https://static.vecteezy.com/system/resources/thumbnails/066/712/310/small_2x/tiktok-shop-icon-logo-symbol-free-png.png" alt="TikTok Shop" className="w-full h-full object-cover" />
+                      <img src="https://static.vecteezy.com/system/resources/thumbnails/066/712/310/small_2x/tiktok-shop-icon-logo-symbol-free-png.png" alt="TikTok Shop" className="w-full h-full object-contain" />
                     )}
                     {!['shopee','tiktok','mercadolivre'].includes(p.slug) && (
                       <div className="w-4 h-4 rounded-full" style={{ background: p.color }} />
