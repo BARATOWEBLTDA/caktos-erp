@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Boxes, TrendingUp, TrendingDown, Settings2, Search, Loader2, X, AlertTriangle } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, Settings2, Search, Loader2, X, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -17,6 +17,13 @@ interface StockProduct {
   stock_quantity: number
   low_stock: boolean
   min_stock: number
+  has_variations?: boolean
+  variations?: Array<{
+    id: string
+    name: string
+    sku: string | null
+    stock_quantity: number
+  }>
 }
 
 interface StockMovement {
@@ -27,6 +34,7 @@ interface StockMovement {
   notes: string | null
   created_at: string
   product_name?: string
+  variation_name?: string
   image_url?: string | null
 }
 
@@ -40,14 +48,18 @@ export default function EstoquePage() {
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState<'estoque' | 'historico'>('estoque')
+  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set())
 
   const [form, setForm] = useState({
     product_id: '',
+    variation_id: '',
     type: 'entrada' as 'entrada' | 'ajuste',
     quantity: '',
     unit_cost: '',
     notes: '',
   })
+
+  const [selectedProduct, setSelectedProduct] = useState<StockProduct | null>(null)
 
   useEffect(() => { load() }, [])
 
@@ -57,45 +69,136 @@ export default function EstoquePage() {
     const sid = profile!.store_id
     setStoreId(sid)
 
-    const [{ data: stockData }, { data: movementsData }] = await Promise.all([
-      supabase.from('current_stock').select('*').eq('store_id', sid).order('product_name'),
-      supabase
-        .from('stock_movements')
-        .select('id, type, quantity, unit_cost, notes, created_at, product:products(name, image_url)')
-        .eq('store_id', sid)
-        .order('created_at', { ascending: false })
-        .limit(100),
-    ])
+    // Buscar estoque atual
+    const { data: stockData } = await supabase
+      .from('current_stock')
+      .select('*')
+      .eq('store_id', sid)
+      .order('product_name')
 
-    setProducts(stockData ?? [])
-    setMovements(
-      (movementsData ?? []).map((m: any) => ({
-        ...m,
+    // Buscar variações e seus estoques
+    const { data: variationsData } = await supabase
+      .from('current_variation_stock')
+      .select('variation_id, product_id, variation_name, sku, stock_quantity')
+
+    const variationsByProduct = new Map<string, Array<{ id: string; name: string; sku: string | null; stock_quantity: number }>>()
+    variationsData?.forEach((v: { variation_id: string; product_id: string; variation_name: string; sku: string | null; stock_quantity: number }) => {
+      if (!variationsByProduct.has(v.product_id)) {
+        variationsByProduct.set(v.product_id, [])
+      }
+      variationsByProduct.get(v.product_id)!.push({
+        id: v.variation_id,
+        name: v.variation_name,
+        sku: v.sku,
+        stock_quantity: v.stock_quantity,
+      })
+    })
+
+    const productsWithVariations = (stockData ?? []).map(p => ({
+      ...p,
+      variations: variationsByProduct.get(p.product_id) ?? [],
+      has_variations: (variationsByProduct.get(p.product_id) ?? []).length > 0,
+    }))
+
+    setProducts(productsWithVariations)
+
+    // Histórico — movimentações normais + variações
+    const { data: movementsData } = await supabase
+      .from('stock_movements')
+      .select('id, type, quantity, unit_cost, notes, created_at, product:products(name, image_url)')
+      .eq('store_id', sid)
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    const { data: variationMovements } = await supabase
+      .from('variation_stock')
+      .select('id, type, quantity, unit_cost, notes, created_at, variation:product_variations(name, product:products(name, image_url))')
+      .eq('store_id', sid)
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    const allMovements: StockMovement[] = [
+      ...(movementsData ?? []).map((m: any) => ({
+        id: m.id,
+        type: m.type,
+        quantity: m.quantity,
+        unit_cost: m.unit_cost,
+        notes: m.notes,
+        created_at: m.created_at,
         product_name: m.product?.name,
         image_url: m.product?.image_url,
-      }))
-    )
+      })),
+      ...(variationMovements ?? []).map((m: any) => ({
+        id: `var-${m.id}`,
+        type: m.type,
+        quantity: m.quantity,
+        unit_cost: m.unit_cost,
+        notes: m.notes,
+        created_at: m.created_at,
+        product_name: m.variation?.product?.name,
+        variation_name: m.variation?.name,
+        image_url: m.variation?.product?.image_url,
+      })),
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+    setMovements(allMovements)
     setLoading(false)
+  }
+
+  function openModal(product?: StockProduct, variationId?: string) {
+    setSelectedProduct(product ?? null)
+    setForm({
+      product_id: product?.product_id ?? '',
+      variation_id: variationId ?? '',
+      type: 'entrada',
+      quantity: '',
+      unit_cost: '',
+      notes: '',
+    })
+    setShowModal(true)
+  }
+
+  function toggleExpand(productId: string) {
+    setExpandedProducts(prev => {
+      const next = new Set(prev)
+      if (next.has(productId)) next.delete(productId)
+      else next.add(productId)
+      return next
+    })
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.product_id || !form.quantity) return
+    if (!form.quantity) return
     setSaving(true)
     try {
-      const { error } = await supabase.from('stock_movements').insert({
-        store_id: storeId,
-        product_id: form.product_id,
-        type: form.type,
-        quantity: parseInt(form.quantity),
-        unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
-        notes: form.notes || null,
-        reference_type: 'manual',
-      })
-      if (error) throw error
+      if (form.variation_id) {
+        // Movimentação de variação
+        const { error } = await supabase.from('variation_stock').insert({
+          store_id: storeId,
+          variation_id: form.variation_id,
+          type: form.type,
+          quantity: parseInt(form.quantity),
+          unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
+          notes: form.notes || null,
+          reference_type: 'manual',
+        })
+        if (error) throw error
+      } else {
+        // Movimentação de produto simples
+        const { error } = await supabase.from('stock_movements').insert({
+          store_id: storeId,
+          product_id: form.product_id,
+          type: form.type,
+          quantity: parseInt(form.quantity),
+          unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
+          notes: form.notes || null,
+          reference_type: 'manual',
+        })
+        if (error) throw error
+      }
       toast.success('Movimentação registrada!')
       setShowModal(false)
-      setForm({ product_id: '', type: 'entrada', quantity: '', unit_cost: '', notes: '' })
       load()
     } catch (err: unknown) {
       toast.error((err as Error).message)
@@ -105,17 +208,28 @@ export default function EstoquePage() {
   }
 
   const filtered = products.filter(p =>
-    !search || p.product_name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku?.toLowerCase().includes(search.toLowerCase())
+    !search ||
+    p.product_name.toLowerCase().includes(search.toLowerCase()) ||
+    p.sku?.toLowerCase().includes(search.toLowerCase()) ||
+    p.variations?.some(v => v.name.toLowerCase().includes(search.toLowerCase()))
   )
 
-  const totalValue = products.reduce((s, p) => s + p.stock_quantity * p.purchase_price, 0)
+  const totalValue = products.reduce((s, p) => {
+    if (p.has_variations) {
+      return s + (p.variations?.reduce((vs, v) => vs + v.stock_quantity * p.purchase_price, 0) ?? 0)
+    }
+    return s + p.stock_quantity * p.purchase_price
+  }, 0)
   const lowStockCount = products.filter(p => p.low_stock).length
-  const totalItems = products.reduce((s, p) => s + p.stock_quantity, 0)
+  const totalItems = products.reduce((s, p) => {
+    if (p.has_variations) {
+      return s + (p.variations?.reduce((vs, v) => vs + v.stock_quantity, 0) ?? 0)
+    }
+    return s + p.stock_quantity
+  }, 0)
 
   return (
     <div className="space-y-5 max-w-6xl">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="section-title text-xl">Estoque</h1>
@@ -123,7 +237,7 @@ export default function EstoquePage() {
             {products.length} produtos · {totalItems} unidades no total
           </p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary">
+        <button onClick={() => openModal()} className="btn-primary">
           <Plus size={16} /> Movimentar estoque
         </button>
       </div>
@@ -157,38 +271,27 @@ export default function EstoquePage() {
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'rgb(var(--bg-tertiary))' }}>
-        <button
-          onClick={() => setTab('estoque')}
-          className="px-4 py-2 text-sm font-medium rounded-lg transition-all"
-          style={{
-            background: tab === 'estoque' ? 'rgb(var(--bg-card))' : 'transparent',
-            color: tab === 'estoque' ? 'rgb(var(--text-primary))' : 'rgb(var(--text-muted))',
-            boxShadow: tab === 'estoque' ? 'var(--shadow-card)' : 'none',
-          }}>
-          Posição atual
-        </button>
-        <button
-          onClick={() => setTab('historico')}
-          className="px-4 py-2 text-sm font-medium rounded-lg transition-all"
-          style={{
-            background: tab === 'historico' ? 'rgb(var(--bg-card))' : 'transparent',
-            color: tab === 'historico' ? 'rgb(var(--text-primary))' : 'rgb(var(--text-muted))',
-            boxShadow: tab === 'historico' ? 'var(--shadow-card)' : 'none',
-          }}>
-          Histórico de entradas
-        </button>
+        {(['estoque', 'historico'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className="px-4 py-2 text-sm font-medium rounded-lg transition-all"
+            style={{
+              background: tab === t ? 'rgb(var(--bg-card))' : 'transparent',
+              color: tab === t ? 'rgb(var(--text-primary))' : 'rgb(var(--text-muted))',
+              boxShadow: tab === t ? 'var(--shadow-card)' : 'none',
+            }}>
+            {t === 'estoque' ? 'Posição atual' : 'Histórico de entradas'}
+          </button>
+        ))}
       </div>
 
       {tab === 'estoque' && (
         <>
-          {/* Busca */}
           <div className="relative max-w-xs">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgb(var(--text-muted))' }} />
-            <input type="text" placeholder="Buscar produto..." className="input-base pl-9"
+            <input type="text" placeholder="Buscar produto ou variação..." className="input-base pl-9"
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
 
-          {/* Tabela estilo Excel */}
           {loading ? (
             <div className="space-y-2">{[...Array(6)].map((_, i) => <div key={i} className="h-16 rounded-xl shimmer" />)}</div>
           ) : (
@@ -197,9 +300,9 @@ export default function EstoquePage() {
                 <table className="table-base">
                   <thead>
                     <tr>
-                      <th>Produto</th>
+                      <th>Produto / Variação</th>
                       <th>SKU</th>
-                      <th>Estoque atual</th>
+                      <th>Estoque</th>
                       <th>Mínimo</th>
                       <th>Custo unit.</th>
                       <th>Valor total</th>
@@ -209,67 +312,137 @@ export default function EstoquePage() {
                   </thead>
                   <tbody>
                     {filtered.map(p => (
-                      <tr key={p.product_id}>
-                        <td>
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0"
-                              style={{ background: 'rgb(var(--bg-tertiary))' }}>
-                              {p.image_url
-                                ? <img src={p.image_url} alt={p.product_name} className="w-full h-full object-cover" />
-                                : <div className="w-full h-full flex items-center justify-center text-base">💄</div>
-                              }
+                      <>
+                        {/* Linha do produto */}
+                        <tr key={p.product_id}>
+                          <td>
+                            <div className="flex items-center gap-2.5">
+                              {p.has_variations && (
+                                <button onClick={() => toggleExpand(p.product_id)}
+                                  className="p-0.5 rounded transition-colors hover:bg-[rgb(var(--bg-tertiary))]">
+                                  {expandedProducts.has(p.product_id)
+                                    ? <ChevronDown size={14} style={{ color: 'rgb(var(--text-muted))' }} />
+                                    : <ChevronRight size={14} style={{ color: 'rgb(var(--text-muted))' }} />
+                                  }
+                                </button>
+                              )}
+                              <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0"
+                                style={{ background: 'rgb(var(--bg-tertiary))' }}>
+                                {p.image_url
+                                  ? <img src={p.image_url} alt={p.product_name} className="w-full h-full object-cover" />
+                                  : <div className="w-full h-full flex items-center justify-center text-base">💄</div>
+                                }
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
+                                  {p.product_name}
+                                </span>
+                                {p.has_variations && (
+                                  <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
+                                    {p.variations?.length} variações
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
-                              {p.product_name}
+                          </td>
+                          <td>
+                            <span className="text-xs font-mono" style={{ color: 'rgb(var(--text-muted))' }}>
+                              {p.sku ?? '—'}
                             </span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="text-xs font-mono" style={{ color: 'rgb(var(--text-muted))' }}>
-                            {p.sku ?? '—'}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="text-sm font-bold"
-                            style={{ color: p.stock_quantity <= 0 ? '#ef4444' : p.low_stock ? '#eab308' : '#10b981' }}>
-                            {p.stock_quantity} un.
-                          </span>
-                        </td>
-                        <td>
-                          <span className="text-sm" style={{ color: 'rgb(var(--text-muted))' }}>
-                            {p.min_stock} un.
-                          </span>
-                        </td>
-                        <td>
-                          <span className="text-sm" style={{ color: 'rgb(var(--text-primary))' }}>
-                            {formatCurrency(p.purchase_price)}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="text-sm font-semibold" style={{ color: '#c44df0' }}>
-                            {formatCurrency(p.stock_quantity * p.purchase_price)}
-                          </span>
-                        </td>
-                        <td>
-                          {p.stock_quantity <= 0 ? (
-                            <span className="badge text-xs px-2 py-0.5 text-red-500 bg-red-500/10">Sem estoque</span>
-                          ) : p.low_stock ? (
-                            <span className="badge text-xs px-2 py-0.5 text-yellow-500 bg-yellow-500/10 gap-1">
-                              <AlertTriangle size={10} /> Estoque baixo
+                          </td>
+                          <td>
+                            <span className="text-sm font-bold"
+                              style={{ color: p.has_variations ? 'rgb(var(--text-muted))' : p.stock_quantity <= 0 ? '#ef4444' : p.low_stock ? '#eab308' : '#10b981' }}>
+                              {p.has_variations
+                                ? `${p.variations?.reduce((s, v) => s + v.stock_quantity, 0) ?? 0} un. (total)`
+                                : `${p.stock_quantity} un.`
+                              }
                             </span>
-                          ) : (
-                            <span className="badge text-xs px-2 py-0.5 text-green-500 bg-green-500/10">OK</span>
-                          )}
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => { setForm(f => ({ ...f, product_id: p.product_id })); setShowModal(true) }}
-                            className="btn-ghost text-xs px-2 py-1 gap-1"
-                            style={{ color: '#c44df0' }}>
-                            <Plus size={13} /> Entrada
-                          </button>
-                        </td>
-                      </tr>
+                          </td>
+                          <td>
+                            <span className="text-sm" style={{ color: 'rgb(var(--text-muted))' }}>{p.min_stock} un.</span>
+                          </td>
+                          <td>
+                            <span className="text-sm" style={{ color: 'rgb(var(--text-primary))' }}>
+                              {formatCurrency(p.purchase_price)}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="text-sm font-semibold" style={{ color: '#c44df0' }}>
+                              {formatCurrency((p.has_variations
+                                ? p.variations?.reduce((s, v) => s + v.stock_quantity, 0) ?? 0
+                                : p.stock_quantity) * p.purchase_price)}
+                            </span>
+                          </td>
+                          <td>
+                            {!p.has_variations && (
+                              p.stock_quantity <= 0
+                                ? <span className="badge text-xs px-2 py-0.5 text-red-500 bg-red-500/10">Sem estoque</span>
+                                : p.low_stock
+                                ? <span className="badge text-xs px-2 py-0.5 text-yellow-500 bg-yellow-500/10 gap-1"><AlertTriangle size={10} /> Baixo</span>
+                                : <span className="badge text-xs px-2 py-0.5 text-green-500 bg-green-500/10">OK</span>
+                            )}
+                          </td>
+                          <td>
+                            {!p.has_variations && (
+                              <button onClick={() => openModal(p)}
+                                className="btn-ghost text-xs px-2 py-1 gap-1" style={{ color: '#c44df0' }}>
+                                <Plus size={13} /> Entrada
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+
+                        {/* Linhas das variações (expandidas) */}
+                        {p.has_variations && expandedProducts.has(p.product_id) && p.variations?.map(variation => (
+                          <tr key={variation.id} style={{ background: 'rgb(var(--bg-tertiary)/0.5)' }}>
+                            <td>
+                              <div className="flex items-center gap-2 pl-8">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#c44df0' }} />
+                                <span className="text-sm" style={{ color: 'rgb(var(--text-primary))' }}>
+                                  {variation.name}
+                                </span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="text-xs font-mono" style={{ color: 'rgb(var(--text-muted))' }}>
+                                {variation.sku ?? '—'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="text-sm font-bold"
+                                style={{ color: variation.stock_quantity <= 0 ? '#ef4444' : variation.stock_quantity <= p.min_stock ? '#eab308' : '#10b981' }}>
+                                {variation.stock_quantity} un.
+                              </span>
+                            </td>
+                            <td>—</td>
+                            <td>
+                              <span className="text-sm" style={{ color: 'rgb(var(--text-primary))' }}>
+                                {formatCurrency(p.purchase_price)}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="text-sm font-semibold" style={{ color: '#c44df0' }}>
+                                {formatCurrency(variation.stock_quantity * p.purchase_price)}
+                              </span>
+                            </td>
+                            <td>
+                              {variation.stock_quantity <= 0
+                                ? <span className="badge text-xs px-2 py-0.5 text-red-500 bg-red-500/10">Sem estoque</span>
+                                : variation.stock_quantity <= p.min_stock
+                                ? <span className="badge text-xs px-2 py-0.5 text-yellow-500 bg-yellow-500/10 gap-1"><AlertTriangle size={10} /> Baixo</span>
+                                : <span className="badge text-xs px-2 py-0.5 text-green-500 bg-green-500/10">OK</span>
+                              }
+                            </td>
+                            <td>
+                              <button onClick={() => openModal(p, variation.id)}
+                                className="btn-ghost text-xs px-2 py-1 gap-1" style={{ color: '#c44df0' }}>
+                                <Plus size={13} /> Entrada
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </>
                     ))}
                   </tbody>
                 </table>
@@ -286,6 +459,7 @@ export default function EstoquePage() {
               <thead>
                 <tr>
                   <th>Produto</th>
+                  <th>Variação</th>
                   <th>Tipo</th>
                   <th>Quantidade</th>
                   <th>Custo unit.</th>
@@ -298,8 +472,7 @@ export default function EstoquePage() {
                   <tr key={m.id}>
                     <td>
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0"
-                          style={{ background: 'rgb(var(--bg-tertiary))' }}>
+                        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0" style={{ background: 'rgb(var(--bg-tertiary))' }}>
                           {m.image_url
                             ? <img src={m.image_url} alt={m.product_name} className="w-full h-full object-cover" />
                             : <div className="w-full h-full flex items-center justify-center text-sm">💄</div>
@@ -311,6 +484,14 @@ export default function EstoquePage() {
                       </div>
                     </td>
                     <td>
+                      {m.variation_name
+                        ? <span className="badge text-xs px-2 py-0.5" style={{ background: 'rgba(196,77,240,0.1)', color: '#c44df0' }}>
+                            {m.variation_name}
+                          </span>
+                        : <span style={{ color: 'rgb(var(--text-muted))' }}>—</span>
+                      }
+                    </td>
+                    <td>
                       <div className="flex items-center gap-1.5">
                         {m.type === 'entrada'
                           ? <TrendingUp size={14} style={{ color: '#10b981' }} />
@@ -320,7 +501,7 @@ export default function EstoquePage() {
                         }
                         <span className="text-sm capitalize"
                           style={{ color: m.type === 'entrada' ? '#10b981' : m.type === 'saida' ? '#ef4444' : '#c44df0' }}>
-                          {m.type === 'entrada' ? 'Entrada' : m.type === 'saida' ? 'Saída (venda)' : 'Ajuste'}
+                          {m.type === 'entrada' ? 'Entrada' : m.type === 'saida' ? 'Saída' : 'Ajuste'}
                         </span>
                       </div>
                     </td>
@@ -336,9 +517,7 @@ export default function EstoquePage() {
                       </span>
                     </td>
                     <td>
-                      <span className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
-                        {m.notes ?? '—'}
-                      </span>
+                      <span className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>{m.notes ?? '—'}</span>
                     </td>
                     <td>
                       <span className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
@@ -363,7 +542,10 @@ export default function EstoquePage() {
             <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
               <Dialog.Title className="text-base font-bold"
                 style={{ fontFamily: 'Sora, sans-serif', color: 'rgb(var(--text-primary))' }}>
-                Movimentar Estoque
+                {form.variation_id
+                  ? `Entrada — ${selectedProduct?.variations?.find(v => v.id === form.variation_id)?.name}`
+                  : 'Movimentar Estoque'
+                }
               </Dialog.Title>
               <Dialog.Close asChild>
                 <button className="btn-ghost p-2"><X size={18} /></button>
@@ -378,9 +560,7 @@ export default function EstoquePage() {
                     onClick={() => setForm({ ...form, type })}
                     className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
                     style={{
-                      background: form.type === type
-                        ? type === 'entrada' ? '#10b981' : '#c44df0'
-                        : 'rgb(var(--bg-tertiary))',
+                      background: form.type === type ? (type === 'entrada' ? '#10b981' : '#c44df0') : 'rgb(var(--bg-tertiary))',
                       color: form.type === type ? 'white' : 'rgb(var(--text-secondary))',
                     }}>
                     {type === 'entrada' ? '↑ Entrada' : '⚙ Ajuste'}
@@ -388,19 +568,68 @@ export default function EstoquePage() {
                 ))}
               </div>
 
-              {/* Produto */}
-              <div>
-                <label className="label">Produto *</label>
-                <select className="input-base" value={form.product_id}
-                  onChange={e => setForm({ ...form, product_id: e.target.value })} required>
-                  <option value="">Selecionar produto...</option>
-                  {products.map(p => (
-                    <option key={p.product_id} value={p.product_id}>
-                      {p.product_name} (estoque atual: {p.stock_quantity})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Produto (se abrir pelo botão geral) */}
+              {!selectedProduct && (
+                <div>
+                  <label className="label">Produto *</label>
+                  <select className="input-base" value={form.product_id}
+                    onChange={e => {
+                      const p = products.find(p => p.product_id === e.target.value)
+                      setSelectedProduct(p ?? null)
+                      setForm({ ...form, product_id: e.target.value, variation_id: '' })
+                    }} required>
+                    <option value="">Selecionar produto...</option>
+                    {products.map(p => (
+                      <option key={p.product_id} value={p.product_id}>
+                        {p.product_name} {p.has_variations ? '(tem variações)' : `(estoque: ${p.stock_quantity})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Se produto tem variações e não veio com variation_id específico */}
+              {selectedProduct?.has_variations && !form.variation_id && (
+                <div>
+                  <label className="label">Variação *</label>
+                  <select className="input-base" value={form.variation_id}
+                    onChange={e => setForm({ ...form, variation_id: e.target.value })} required>
+                    <option value="">Selecionar variação...</option>
+                    {selectedProduct.variations?.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} (estoque atual: {v.stock_quantity})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Info do produto/variação selecionado */}
+              {selectedProduct && (
+                <div className="flex items-center gap-3 rounded-xl p-3"
+                  style={{ background: 'rgb(var(--bg-tertiary))' }}>
+                  <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0"
+                    style={{ background: 'rgb(var(--bg-card))' }}>
+                    {selectedProduct.image_url
+                      ? <img src={selectedProduct.image_url} alt={selectedProduct.product_name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-xl">💄</div>
+                    }
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
+                      {selectedProduct.product_name}
+                    </p>
+                    {form.variation_id && (
+                      <p className="text-xs" style={{ color: '#c44df0' }}>
+                        {selectedProduct.variations?.find(v => v.id === form.variation_id)?.name}
+                      </p>
+                    )}
+                    <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
+                      Custo: {formatCurrency(selectedProduct.purchase_price)}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
