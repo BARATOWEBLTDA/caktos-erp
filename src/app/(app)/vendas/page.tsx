@@ -124,7 +124,7 @@ export default function VendasPage() {
 
       for (const item of data.items) {
         if (item.matched && item.product_id) {
-          const product = productsData?.find(p => p.id === item.product_id)
+          const product = products?.find(p => p.id === item.product_id)
           if (product) {
             newItems.push({
               product_id: product.id,
