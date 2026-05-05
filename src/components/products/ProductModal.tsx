@@ -95,14 +95,17 @@ export default function ProductModal({ product, platforms, taxRate, onClose, onE
           name: v.name,
           sku: v.sku,
           stock_quantity: stockMap.get(v.id) ?? 0,
-          prices: (v.prices as Array<{ platform_id: string; sale_price: number; platform: { name: string; slug: string; color: string } }>)
-            .map(p => ({
-              platform_id: p.platform_id,
-              sale_price: p.sale_price,
-              platform_slug: p.platform.slug,
-              platform_name: p.platform.name,
-              platform_color: p.platform.color,
-            })),
+          prices: (v.prices as Array<{ platform_id: string; sale_price: number; platform: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] }>)
+            .map(p => {
+              const plat = Array.isArray(p.platform) ? p.platform[0] : p.platform
+              return {
+                platform_id: p.platform_id,
+                sale_price: p.sale_price,
+                platform_slug: plat?.slug ?? '',
+                platform_name: plat?.name ?? '',
+                platform_color: plat?.color ?? '',
+              }
+            }),
         })).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true, sensitivity: 'base' }))
 
         setVariations(enriched)
