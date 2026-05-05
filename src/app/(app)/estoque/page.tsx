@@ -383,10 +383,10 @@ export default function EstoquePage() {
                           <td>
                             {!p.has_variations && (
                               p.stock_quantity <= 0
-                                ? <span className="badge text-xs px-2 py-0.5 text-red-500 bg-red-500/10">Sem estoque</span>
+                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#dc2626" }}>Sem estoque</span>
                                 : p.low_stock
-                                ? <span className="badge text-xs px-2 py-0.5 text-yellow-500 bg-yellow-500/10 gap-1"><AlertTriangle size={10} /> Baixo</span>
-                                : <span className="badge text-xs px-2 py-0.5 text-green-500 bg-green-500/10">OK</span>
+                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white flex items-center gap-1" style={{ background: "#d97706" }}><AlertTriangle size={10} /> Baixo</span>
+                                : <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#16a34a" }}>OK</span>
                             )}
                           </td>
                           <td>
@@ -434,10 +434,10 @@ export default function EstoquePage() {
                             </td>
                             <td>
                               {variation.stock_quantity <= 0
-                                ? <span className="badge text-xs px-2 py-0.5 text-red-500 bg-red-500/10">Sem estoque</span>
+                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#dc2626" }}>Sem estoque</span>
                                 : variation.stock_quantity <= p.min_stock
-                                ? <span className="badge text-xs px-2 py-0.5 text-yellow-500 bg-yellow-500/10 gap-1"><AlertTriangle size={10} /> Baixo</span>
-                                : <span className="badge text-xs px-2 py-0.5 text-green-500 bg-green-500/10">OK</span>
+                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white flex items-center gap-1" style={{ background: "#d97706" }}><AlertTriangle size={10} /> Baixo</span>
+                                : <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#16a34a" }}>OK</span>
                               }
                             </td>
                             <td>
