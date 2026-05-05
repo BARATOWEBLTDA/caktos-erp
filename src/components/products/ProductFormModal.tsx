@@ -130,10 +130,10 @@ export default function ProductFormModal({
         const ext = imageFile.name.split('.').pop()
         const path = `${storeId}/${Date.now()}.${ext}`
         const { error: uploadError } = await supabase.storage
-          .from('produtos')
+          .from('products')
           .upload(path, imageFile, { upsert: true })
         if (uploadError) throw uploadError
-        imageUrl = supabase.storage.from('produtos').getPublicUrl(path).data.publicUrl
+        imageUrl = supabase.storage.from('products').getPublicUrl(path).data.publicUrl
       }
 
       // Usar menor preço de venda das plataformas ativas como sale_price do produto
