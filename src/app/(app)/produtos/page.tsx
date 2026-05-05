@@ -18,6 +18,7 @@ export default async function ProdutosPage() {
     { data: products },
     { data: categories },
     { data: platforms },
+    { data: suppliers },
   ] = await Promise.all([
     supabase
       .from('products')
@@ -46,6 +47,13 @@ export default async function ProdutosPage() {
       .select('*')
       .eq('store_id', storeId)
       .eq('is_active', true),
+
+    supabase
+      .from('suppliers')
+      .select('id, name')
+      .eq('store_id', storeId)
+      .eq('is_active', true)
+      .order('name'),
   ])
 
   // Buscar estoque atual para cada produto
@@ -67,6 +75,7 @@ export default async function ProdutosPage() {
       initialProducts={productsWithStock}
       categories={categories ?? []}
       platforms={platforms ?? []}
+      suppliers={suppliers ?? []}
       storeId={storeId!}
       taxRate={taxRate}
     />

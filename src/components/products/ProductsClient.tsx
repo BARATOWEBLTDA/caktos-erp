@@ -13,6 +13,7 @@ interface ProductsClientProps {
   initialProducts: (Product & { stock_quantity: number; low_stock: boolean })[]
   categories: Category[]
   platforms: Platform[]
+  suppliers: Array<{ id: string; name: string }>
   storeId: string
   taxRate: number
 }
@@ -21,6 +22,7 @@ export default function ProductsClient({
   initialProducts,
   categories,
   platforms,
+  suppliers,
   storeId,
   taxRate,
 }: ProductsClientProps) {
@@ -260,6 +262,7 @@ export default function ProductsClient({
           product={editProduct}
           categories={categories}
           platforms={platforms}
+          suppliers={suppliers}
           storeId={storeId}
           onClose={() => { setShowForm(false); setEditProduct(null) }}
           onSave={refreshProducts}

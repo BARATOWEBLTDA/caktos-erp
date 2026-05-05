@@ -19,6 +19,7 @@ interface ProductFormModalProps {
   product: (Product & { stock_quantity?: number }) | null
   categories: Category[]
   platforms: Platform[]
+  suppliers: Array<{ id: string; name: string }>
   storeId: string
   onClose: () => void
   onSave: () => void
@@ -28,6 +29,7 @@ export default function ProductFormModal({
   product,
   categories,
   platforms,
+  suppliers,
   storeId,
   onClose,
   onSave,
@@ -320,7 +322,7 @@ export default function ProductFormModal({
                   💡 O preço de venda é definido por plataforma na aba <strong>Plataformas</strong>.
                 </p>
 
-                {/* Categoria e Tags */}
+                {/* Categoria, Fornecedor e Tags */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="label">Categoria</label>
@@ -331,11 +333,19 @@ export default function ProductFormModal({
                     </select>
                   </div>
                   <div>
-                    <label className="label">Tags</label>
-                    <input type="text" className="input-base" value={form.tags}
-                      onChange={e => setForm({ ...form, tags: e.target.value })}
-                      placeholder="nude, matte (separar por vírgula)" />
+                    <label className="label">Fornecedor</label>
+                    <select className="input-base" value={form.supplier_id}
+                      onChange={e => setForm({ ...form, supplier_id: e.target.value })}>
+                      <option value="">Selecionar...</option>
+                      {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
                   </div>
+                </div>
+                <div>
+                  <label className="label">Tags</label>
+                  <input type="text" className="input-base" value={form.tags}
+                    onChange={e => setForm({ ...form, tags: e.target.value })}
+                    placeholder="nude, matte (separar por vírgula)" />
                 </div>
               </>
             )}
