@@ -38,15 +38,26 @@ export default function ProductModal({ product, platforms, taxRate, onClose, onE
   }>>([])
 
   useEffect(() => {
-    // Estoque real
-    supabase
-      .from('current_stock')
-      .select('stock_quantity')
-      .eq('product_id', product.id)
-      .single()
-      .then(({ data }) => {
+    // Estoque real — soma variações se existirem
+    async function loadStock() {
+      const { data: vars } = await supabase
+        .from('current_variation_stock')
+        .select('stock_quantity')
+        .eq('product_id', product.id)
+
+      if (vars && vars.length > 0) {
+        const total = vars.reduce((s, v) => s + (v.stock_quantity ?? 0), 0)
+        setRealStock(total)
+      } else {
+        const { data } = await supabase
+          .from('current_stock')
+          .select('stock_quantity')
+          .eq('product_id', product.id)
+          .single()
         if (data) setRealStock(data.stock_quantity)
-      })
+      }
+    }
+    loadStock()
 
     // Histórico de movimentações
     supabase
