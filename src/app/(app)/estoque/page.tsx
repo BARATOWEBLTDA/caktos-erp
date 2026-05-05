@@ -383,9 +383,9 @@ export default function EstoquePage() {
                           <td>
                             {!p.has_variations && (
                               p.stock_quantity <= 0
-                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#dc2626" }}>Sem estoque</span>
+                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#dc2626", whiteSpace: "nowrap" }}>Sem estoque</span>
                                 : p.low_stock
-                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white flex items-center gap-1" style={{ background: "#d97706" }}><AlertTriangle size={10} /> Baixo</span>
+                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#d97706" }}>Baixo</span>
                                 : <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#16a34a" }}>OK</span>
                             )}
                           </td>
@@ -434,9 +434,9 @@ export default function EstoquePage() {
                             </td>
                             <td>
                               {variation.stock_quantity <= 0
-                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#dc2626" }}>Sem estoque</span>
+                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#dc2626", whiteSpace: "nowrap" }}>Sem estoque</span>
                                 : variation.stock_quantity <= p.min_stock
-                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white flex items-center gap-1" style={{ background: "#d97706" }}><AlertTriangle size={10} /> Baixo</span>
+                                ? <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#d97706" }}>Baixo</span>
                                 : <span className="text-xs font-bold px-2.5 py-1 rounded-md text-white" style={{ background: "#16a34a" }}>OK</span>
                               }
                             </td>
