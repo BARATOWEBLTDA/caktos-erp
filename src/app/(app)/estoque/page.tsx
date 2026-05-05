@@ -80,6 +80,7 @@ export default function EstoquePage() {
     const { data: variationsData } = await supabase
       .from('current_variation_stock')
       .select('variation_id, product_id, variation_name, sku, stock_quantity')
+      .order('variation_name')
 
     const variationsByProduct = new Map<string, Array<{ id: string; name: string; sku: string | null; stock_quantity: number }>>()
     variationsData?.forEach((v: { variation_id: string; product_id: string; variation_name: string; sku: string | null; stock_quantity: number }) => {
@@ -92,6 +93,11 @@ export default function EstoquePage() {
         sku: v.sku,
         stock_quantity: v.stock_quantity,
       })
+    })
+
+    // Ordenar variações com ordenação natural (FS10, FS20, FS30...)
+    variationsByProduct.forEach((variations, key) => {
+      variations.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true, sensitivity: 'base' }))
     })
 
     const productsWithVariations = (stockData ?? []).map(p => ({
@@ -595,7 +601,9 @@ export default function EstoquePage() {
                   <select className="input-base" value={form.variation_id}
                     onChange={e => setForm({ ...form, variation_id: e.target.value })} required>
                     <option value="">Selecionar variação...</option>
-                    {selectedProduct.variations?.map(v => (
+                    {[...(selectedProduct.variations ?? [])].sort((a, b) =>
+                      a.name.localeCompare(b.name, 'pt-BR', { numeric: true, sensitivity: 'base' })
+                    ).map(v => (
                       <option key={v.id} value={v.id}>
                         {v.name} (estoque atual: {v.stock_quantity})
                       </option>
