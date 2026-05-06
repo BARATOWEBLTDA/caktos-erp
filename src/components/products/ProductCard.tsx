@@ -1,6 +1,5 @@
 'use client'
 
-import { AlertTriangle } from 'lucide-react'
 import { formatCurrency, formatPercent, calculatePlatformProfit } from '@/lib/utils'
 import type { Product, Platform } from '@/types'
 
@@ -18,7 +17,6 @@ const PLATFORM_LOGOS: Record<string, string> = {
 }
 
 export default function ProductCard({ product, platforms, taxRate, onClick }: ProductCardProps) {
-  // Mostrar APENAS plataformas ativas com preço configurado
   const displayProfits = platforms
     .map(platform => {
       const productPlatform = product.platforms?.find(pp => pp.platform_id === platform.id)
@@ -29,14 +27,7 @@ export default function ProductCard({ product, platforms, taxRate, onClick }: Pr
         platform,
         salePrice,
         productPlatform,
-        profit: calculatePlatformProfit(
-          salePrice,
-          product.purchase_price,
-          platform,
-          productPlatform,
-          0,
-          taxRate
-        )
+        profit: calculatePlatformProfit(salePrice, product.purchase_price, platform, productPlatform, 0, taxRate)
       }
     })
     .filter(Boolean) as Array<{
@@ -49,92 +40,65 @@ export default function ProductCard({ product, platforms, taxRate, onClick }: Pr
   return (
     <div
       className="rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col"
-      style={{
-        background: 'rgb(var(--bg-card))',
-        border: '1px solid rgb(var(--border))',
-        boxShadow: 'var(--shadow-card)',
-      }}
+      style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border))', boxShadow: 'var(--shadow-card)' }}
       onClick={onClick}
     >
-      {/* Imagem */}
+      {/* Imagem — sem badges */}
       <div className="relative w-full" style={{ aspectRatio: '1', background: 'rgb(var(--bg-tertiary))' }}>
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
+          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl">💄</div>
         )}
-
-        {/* Badge estoque baixo */}
-        {product.low_stock && (
-          <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center"
-            title="Estoque baixo">
-            <AlertTriangle size={12} className="text-white" />
-          </div>
-        )}
-
-        {/* Badge sem estoque */}
-        {product.stock_quantity <= 0 && (
-          <div className="absolute top-2 left-2 rounded-lg px-2 py-0.5 text-[10px] font-bold bg-red-500 text-white">
-            SEM ESTOQUE
-          </div>
-        )}
       </div>
 
-      {/* Informações abaixo da imagem */}
-      <div className="p-3 flex flex-col gap-2">
-        {/* Nome + preço de compra */}
-        <div>
-          <p className="text-sm font-semibold line-clamp-2 leading-snug"
-            style={{ color: 'rgb(var(--text-primary))', fontFamily: 'Sora, sans-serif' }}>
-            {product.name}
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-muted))' }}>
-            Custo: <span className="font-medium">{formatCurrency(product.purchase_price)}</span>
-          </p>
-        </div>
+      {/* Info */}
+      <div className="p-3 flex flex-col gap-2.5">
+        {/* Nome */}
+        <p className="text-sm font-semibold line-clamp-2 leading-snug"
+          style={{ color: 'rgb(var(--text-primary))', fontFamily: 'Sora, sans-serif' }}>
+          {product.name}
+        </p>
+
+        {/* Preço de compra */}
+        <p className="text-xs font-medium" style={{ color: 'rgb(var(--text-muted))' }}>
+          Preço de Compra: <span className="font-semibold" style={{ color: 'rgb(var(--text-secondary))' }}>
+            {formatCurrency(product.purchase_price)}
+          </span>
+        </p>
 
         {/* Lucro por plataforma */}
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {displayProfits.length === 0 && (
-            <p className="text-[10px]" style={{ color: 'rgb(var(--text-muted))' }}>
+            <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
               Nenhuma plataforma vinculada
             </p>
           )}
           {displayProfits.map(({ platform, salePrice, profit }) => (
             <div key={platform.id} className="flex items-center gap-2">
-              {/* Logo da plataforma */}
-              <div className="w-5 h-5 rounded-md overflow-hidden shrink-0 flex items-center justify-center"
-                style={{ background: 'white', padding: '1px' }}>
+              <div className="w-6 h-6 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                style={{ background: 'white', padding: '2px' }}>
                 {PLATFORM_LOGOS[platform.slug] ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={PLATFORM_LOGOS[platform.slug]}
-                    alt={platform.name}
-                    className="w-full h-full object-contain"
-                  />
+                  <img src={PLATFORM_LOGOS[platform.slug]} alt={platform.name} className="w-full h-full object-contain" />
                 ) : (
                   <div className="w-3 h-3 rounded-full" style={{ background: platform.color }} />
                 )}
               </div>
-              {/* Valores */}
-              <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
-                <span className="text-[10px]" style={{ color: 'rgb(var(--text-muted))' }}>
-                  Venda: <span className="font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>{formatCurrency(salePrice)}</span>
+              <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap">
+                <span className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
+                  Venda: <span className="font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>
+                    {formatCurrency(salePrice)}
+                  </span>
                 </span>
-                <span className="text-[10px] font-bold"
-                  style={{ color: profit.net_profit >= 0 ? '#10b981' : '#ef4444' }}>
+                <span className="text-xs font-bold" style={{ color: profit.net_profit >= 0 ? '#10b981' : '#ef4444' }}>
                   Lucro: {formatCurrency(profit.net_profit)}
                 </span>
-                <span className="text-[10px] rounded-md px-1 py-0.5 font-medium"
+                <span className="text-xs rounded-md px-1.5 py-0.5 font-semibold"
                   style={{
-                    background: profit.net_profit >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-                    color: profit.net_profit >= 0 ? '#10b981' : '#ef4444',
+                    background: profit.profit_margin >= 20 ? '#16a34a' : profit.profit_margin >= 10 ? '#d97706' : '#dc2626',
+                    color: 'white',
                   }}>
                   {formatPercent(profit.profit_margin)}
                 </span>

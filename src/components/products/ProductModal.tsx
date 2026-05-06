@@ -218,24 +218,19 @@ export default function ProductModal({ product, platforms, taxRate, onClose, onE
                   Lucro por plataforma
                 </h3>
                 <div className="space-y-2">
-                  {platforms.map(platform => {
+                  {platforms.filter(platform => {
                     const productPlatform = product.platforms?.find(pp => pp.platform_id === platform.id)
-                    const isLinked = productPlatform?.is_active
+                    return productPlatform?.is_active && productPlatform?.sale_price
+                  }).map(platform => {
+                    const productPlatform = product.platforms?.find(pp => pp.platform_id === platform.id)
                     const salePrice = productPlatform?.sale_price ?? product.sale_price
                     const profit = calculatePlatformProfit(
-                      salePrice,
-                      product.purchase_price,
-                      platform,
-                      productPlatform,
-                      0,
-                      taxRate
+                      salePrice, product.purchase_price, platform, productPlatform, 0, taxRate
                     )
-
                     return (
                       <div key={platform.id}
-                        className={`flex items-center gap-3 rounded-2xl p-3.5 ${!isLinked ? 'opacity-40' : ''}`}
+                        className="flex items-center gap-3 rounded-2xl p-3.5"
                         style={{ background: 'rgb(var(--bg-tertiary))' }}>
-                        {/* Logo */}
                         <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 flex items-center justify-center p-1"
                           style={{ background: 'white' }}>
                           {PLATFORM_LOGOS[platform.slug]
@@ -244,19 +239,14 @@ export default function ProductModal({ product, platforms, taxRate, onClose, onE
                             : <div className="w-3 h-3 rounded-full" style={{ background: platform.color }} />
                           }
                         </div>
-
-                        {/* Nome + preço */}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>
                             {platform.name}
-                            {!isLinked && <span className="ml-2 text-xs font-normal" style={{ color: 'rgb(var(--text-muted))' }}>(não vinculado)</span>}
                           </p>
                           <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
                             Venda: {formatCurrency(salePrice)}
                           </p>
                         </div>
-
-                        {/* Lucro + margem */}
                         <div className="text-right shrink-0">
                           <p className="text-base font-bold" style={{ color: profit.net_profit >= 0 ? '#10b981' : '#ef4444', fontFamily: 'Sora, sans-serif' }}>
                             {formatCurrency(profit.net_profit)}
@@ -269,6 +259,23 @@ export default function ProductModal({ product, platforms, taxRate, onClose, onE
                       </div>
                     )
                   })}
+
+                  {/* Plataformas não vinculadas — botão para adicionar */}
+                  {platforms.filter(platform => {
+                    const productPlatform = product.platforms?.find(pp => pp.platform_id === platform.id)
+                    return !productPlatform?.is_active || !productPlatform?.sale_price
+                  }).length > 0 && (
+                    <button
+                      onClick={e => { e.stopPropagation(); onEdit() }}
+                      className="w-full flex items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-medium transition-all"
+                      style={{
+                        background: 'transparent',
+                        border: '1px dashed rgb(var(--border-strong))',
+                        color: 'rgb(var(--text-muted))',
+                      }}>
+                      + Adicionar plataforma
+                    </button>
+                  )}
                 </div>
 
                 {/* Histórico de estoque */}
