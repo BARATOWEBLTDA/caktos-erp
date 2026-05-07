@@ -53,7 +53,7 @@ export default function EstoquePage() {
   const [form, setForm] = useState({
     product_id: '',
     variation_id: '',
-    type: 'entrada' as 'entrada' | 'ajuste',
+    type: 'entrada' as 'entrada' | 'saida' | 'ajuste',
     quantity: '',
     unit_cost: '',
     notes: '',
@@ -178,27 +178,44 @@ export default function EstoquePage() {
     if (!form.quantity) return
     setSaving(true)
     try {
+      let type = form.type
+      let quantity = parseInt(form.quantity)
+
+      // Ajuste: calcula a diferença para chegar no número desejado
+      if (form.type === 'ajuste') {
+        const currentStock = form.variation_id
+          ? selectedProduct?.variations?.find(v => v.id === form.variation_id)?.stock_quantity ?? 0
+          : selectedProduct?.stock_quantity ?? 0
+
+        const diff = quantity - currentStock
+        if (diff === 0) {
+          toast.success('Estoque já está nesse valor!')
+          setShowModal(false)
+          return
+        }
+        type = diff > 0 ? 'entrada' : 'saida'
+        quantity = Math.abs(diff)
+      }
+
       if (form.variation_id) {
-        // Movimentação de variação
         const { error } = await supabase.from('variation_stock').insert({
           store_id: storeId,
           variation_id: form.variation_id,
-          type: form.type,
-          quantity: parseInt(form.quantity),
+          type,
+          quantity,
           unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
-          notes: form.notes || null,
+          notes: form.type === 'ajuste' ? `Ajuste manual para ${form.quantity} un.` : (form.notes || null),
           reference_type: 'manual',
         })
         if (error) throw error
       } else {
-        // Movimentação de produto simples
         const { error } = await supabase.from('stock_movements').insert({
           store_id: storeId,
           product_id: form.product_id,
-          type: form.type,
-          quantity: parseInt(form.quantity),
+          type,
+          quantity,
           unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
-          notes: form.notes || null,
+          notes: form.type === 'ajuste' ? `Ajuste manual para ${form.quantity} un.` : (form.notes || null),
           reference_type: 'manual',
         })
         if (error) throw error
@@ -561,18 +578,29 @@ export default function EstoquePage() {
             <form onSubmit={handleSave} className="p-5 space-y-4">
               {/* Tipo */}
               <div className="flex gap-2">
-                {(['entrada', 'ajuste'] as const).map(type => (
-                  <button key={type} type="button"
-                    onClick={() => setForm({ ...form, type })}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                {([
+                  { key: 'entrada', label: '↑ Entrada', color: '#16a34a' },
+                  { key: 'saida', label: '↓ Saída', color: '#dc2626' },
+                  { key: 'ajuste', label: '⚙ Definir total', color: '#c44df0' },
+                ] as const).map(t => (
+                  <button key={t.key} type="button"
+                    onClick={() => setForm({ ...form, type: t.key })}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all"
                     style={{
-                      background: form.type === type ? (type === 'entrada' ? '#10b981' : '#c44df0') : 'rgb(var(--bg-tertiary))',
-                      color: form.type === type ? 'white' : 'rgb(var(--text-secondary))',
+                      background: form.type === t.key ? t.color : 'rgb(var(--bg-tertiary))',
+                      color: form.type === t.key ? 'white' : 'rgb(var(--text-secondary))',
                     }}>
-                    {type === 'entrada' ? '↑ Entrada' : '⚙ Ajuste'}
+                    {t.label}
                   </button>
                 ))}
               </div>
+
+              {/* Descrição do tipo selecionado */}
+              <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'rgb(var(--bg-tertiary))', color: 'rgb(var(--text-muted))' }}>
+                {form.type === 'entrada' && '↑ Adiciona ao estoque atual. Ex: chegou 20 unidades → estoque sobe 20.'}
+                {form.type === 'saida' && '↓ Remove do estoque atual. Ex: perdeu 5 unidades → estoque cai 5.'}
+                {form.type === 'ajuste' && '⚙ Define o estoque para um número exato. Ex: digita 50 → estoque vai para 50.'}
+              </p>
 
               {/* Produto (se abrir pelo botão geral) */}
               {!selectedProduct && (
@@ -641,11 +669,13 @@ export default function EstoquePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Quantidade *</label>
-                  <input type="number" min="1" className="input-base" required
+                  <label className="label">
+                    {form.type === 'ajuste' ? 'Estoque desejado *' : 'Quantidade *'}
+                  </label>
+                  <input type="number" min={form.type === 'ajuste' ? '0' : '1'} className="input-base" required
                     value={form.quantity}
                     onChange={e => setForm({ ...form, quantity: e.target.value })}
-                    placeholder="Ex: 10" />
+                    placeholder={form.type === 'ajuste' ? 'Ex: 50 (estoque final)' : 'Ex: 10'} />
                 </div>
                 <div>
                   <label className="label">Custo unitário</label>
