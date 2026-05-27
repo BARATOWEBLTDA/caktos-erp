@@ -24,14 +24,28 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
+  const pathname = request.nextUrl.pathname
 
-  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
+  // Rotas públicas — não precisam de login
+  const publicRoutes = ['/login', '/profiles']
+  const isPublic = publicRoutes.some(r => pathname.startsWith(r))
+
+  // Redireciona / para /profiles
+  if (pathname === '/') {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/profiles'
     return NextResponse.redirect(url)
   }
 
-  if (user && request.nextUrl.pathname.startsWith('/login')) {
+  // Sem login → vai para /profiles
+  if (!user && !isPublic) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/profiles'
+    return NextResponse.redirect(url)
+  }
+
+  // Com login → sai do login/profiles e vai pro dashboard
+  if (user && isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
