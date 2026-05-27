@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const PROFILES = [
-  { id: 'bruno', name: 'Bruno', avatar: null, role: 'Administrador' },
-  { id: 'ademir', name: 'Ademir', avatar: null, role: 'Administrador' },
+  { id: 'bruno', name: 'Bruno', avatar: null as string | null, role: 'Administrador' },
+  { id: 'ademir', name: 'Ademir', avatar: null as string | null, role: 'Administrador' },
 ]
 
 export default function ProfilesPage() {
@@ -19,7 +19,8 @@ export default function ProfilesPage() {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')!
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
     let animId: number
 
     interface Particle {
@@ -32,8 +33,8 @@ export default function ProfilesPage() {
     let particles: Particle[] = []
 
     function resize() {
-      W = canvas.width = window.innerWidth
-      H = canvas.height = window.innerHeight
+      W = canvas!.width = window.innerWidth
+      H = canvas!.height = window.innerHeight
     }
 
     function makeParticle(): Particle {
@@ -63,7 +64,7 @@ export default function ProfilesPage() {
     }
 
     function draw() {
-      ctx.clearRect(0, 0, W, H)
+      ctx!.clearRect(0, 0, W, H)
       const { x: mx, y: my } = mouseRef.current
       const radius = 140, strength = 90
 
@@ -86,10 +87,10 @@ export default function ProfilesPage() {
         if (p.ox > W) p.ox = 0
         if (p.oy < 0) p.oy = H
         if (p.oy > H) p.oy = 0
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-        ctx.fillStyle = p.color + a + ')'
-        ctx.fill()
+        ctx!.beginPath()
+        ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+        ctx!.fillStyle = p.color + a + ')'
+        ctx!.fill()
       }
 
       for (let i = 0; i < particles.length; i++) {
@@ -98,24 +99,24 @@ export default function ProfilesPage() {
           const dx = p.x - q.x, dy = p.y - q.y
           const d = Math.sqrt(dx * dx + dy * dy)
           if (d < 90) {
-            ctx.beginPath()
-            ctx.moveTo(p.x, p.y)
-            ctx.lineTo(q.x, q.y)
-            ctx.strokeStyle = 'rgba(196,77,240,' + (1 - d / 90) * 0.2 + ')'
-            ctx.lineWidth = 0.5
-            ctx.stroke()
+            ctx!.beginPath()
+            ctx!.moveTo(p.x, p.y)
+            ctx!.lineTo(q.x, q.y)
+            ctx!.strokeStyle = 'rgba(196,77,240,' + (1 - d / 90) * 0.2 + ')'
+            ctx!.lineWidth = 0.5
+            ctx!.stroke()
           }
         }
       }
 
       if (mx > 0) {
-        const grad = ctx.createRadialGradient(mx, my, 0, mx, my, 120)
+        const grad = ctx!.createRadialGradient(mx, my, 0, mx, my, 120)
         grad.addColorStop(0, 'rgba(196,77,240,0.08)')
         grad.addColorStop(1, 'rgba(196,77,240,0)')
-        ctx.beginPath()
-        ctx.arc(mx, my, 120, 0, Math.PI * 2)
-        ctx.fillStyle = grad
-        ctx.fill()
+        ctx!.beginPath()
+        ctx!.arc(mx, my, 120, 0, Math.PI * 2)
+        ctx!.fillStyle = grad
+        ctx!.fill()
       }
 
       animId = requestAnimationFrame(draw)
@@ -162,26 +163,22 @@ export default function ProfilesPage() {
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
       style={{ background: '#0d0015' }}>
 
-      {/* Canvas de partículas */}
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }} />
+      <canvas ref={canvasRef} className="absolute inset-0"
+        style={{ zIndex: 0, width: '100%', height: '100%' }} />
 
-      {/* Orbs estáticos de fundo */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
         <div className="absolute w-96 h-96 rounded-full"
           style={{ background: 'radial-gradient(circle, rgba(88,28,135,0.35) 0%, transparent 70%)', top: '5%', left: '0%', filter: 'blur(60px)' }} />
         <div className="absolute w-80 h-80 rounded-full"
           style={{ background: 'radial-gradient(circle, rgba(109,40,217,0.3) 0%, transparent 70%)', bottom: '10%', right: '5%', filter: 'blur(70px)' }} />
-        <div className="absolute inset-0 opacity-4"
+        <div className="absolute inset-0"
           style={{
-            backgroundImage: 'linear-gradient(rgba(196,77,240,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(196,77,240,0.15) 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(rgba(196,77,240,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(196,77,240,0.06) 1px, transparent 1px)',
             backgroundSize: '60px 60px',
           }} />
       </div>
 
-      {/* Conteúdo */}
       <div className="relative flex flex-col items-center" style={{ zIndex: 1 }}>
-
-        {/* Logo */}
         <div className="text-center mb-14">
           <div className="flex items-center justify-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -195,7 +192,6 @@ export default function ProfilesPage() {
           <p className="text-sm" style={{ color: 'rgba(196,77,240,0.8)' }}>Quem está acessando?</p>
         </div>
 
-        {/* Cards de perfil */}
         <div className="flex gap-10">
           {PROFILES.map(profile => (
             <button
@@ -212,7 +208,6 @@ export default function ProfilesPage() {
                 transform: hovered === profile.id ? 'translateY(-12px) scale(1.05)' : 'translateY(0) scale(1)',
                 transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
               }}>
-
               <div className="w-28 h-28 rounded-full overflow-hidden flex items-center justify-center"
                 style={{
                   background: 'linear-gradient(135deg, #4c1d95, #7c3aed)',
@@ -229,12 +224,10 @@ export default function ProfilesPage() {
                   </span>
                 )}
               </div>
-
               <div className="text-center">
                 <p className="text-base font-bold text-white" style={{ fontFamily: 'Sora, sans-serif' }}>{profile.name}</p>
                 <p className="text-xs mt-0.5" style={{ color: 'rgba(196,77,240,0.7)' }}>{profile.role}</p>
               </div>
-
               {hovered === profile.id && (
                 <div className="text-xs font-semibold px-4 py-1.5 rounded-full"
                   style={{ background: 'linear-gradient(135deg, #7c3aed, #c44df0)', color: 'white' }}>
@@ -246,10 +239,10 @@ export default function ProfilesPage() {
         </div>
 
         <button onClick={handleLogout}
-          className="mt-12 text-xs font-medium transition-opacity hover:opacity-100"
-          style={{ color: 'rgba(255,255,255,0.35)', opacity: 0.35 }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '0.35')}>
+          className="mt-12 text-xs font-medium transition-all"
+          style={{ color: 'rgba(255,255,255,0.35)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}>
           Sair da conta
         </button>
 
