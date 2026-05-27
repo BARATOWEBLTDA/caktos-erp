@@ -26,26 +26,27 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
 
-  // Rotas públicas — não precisam de login
-  const publicRoutes = ['/login', '/profiles']
-  const isPublic = publicRoutes.some(r => pathname.startsWith(r))
-
-  // Redireciona / para /profiles
+  // Redireciona / para /profiles sempre
   if (pathname === '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/profiles'
     return NextResponse.redirect(url)
   }
 
+  // /profiles é sempre acessível — mesmo logado
+  if (pathname.startsWith('/profiles')) {
+    return supabaseResponse
+  }
+
   // Sem login → vai para /profiles
-  if (!user && !isPublic) {
+  if (!user && !pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/profiles'
     return NextResponse.redirect(url)
   }
 
-  // Com login → sai do login/profiles e vai pro dashboard
-  if (user && isPublic) {
+  // Com login tentando acessar /login → vai pro dashboard
+  if (user && pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
